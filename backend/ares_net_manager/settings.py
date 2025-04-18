@@ -25,6 +25,7 @@ INSTALLED_APPS = [
     'channels',
     'api',
     'core',
+    'events',
 ]
 
 MIDDLEWARE = [
@@ -155,6 +156,9 @@ LOGGING = {
             'handlers': ['console'],
             'level': 'DEBUG',
             'propagate': False,
+        },
+        'django.utils.autoreload': {
+            'level': 'INFO',
         },
         'events': {  # Add this for our events app
             'handlers': ['console'],

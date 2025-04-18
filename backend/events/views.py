@@ -3,12 +3,103 @@ from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from django.utils import timezone
-from .models import Event, TCardColumn
-from .serializers import EventSerializer, TCardColumnSerializer
+from core.models import ActivityLog
+from .models import Event, TCardColumn, Network, EventOperator
+from .serializers import EventSerializer, TCardColumnSerializer, NetworkSerializer, EventOperatorSerializer
 from django.db import transaction
 from rest_framework import serializers
+from django.shortcuts import get_object_or_404
 
 logger = logging.getLogger('events')
+
+class EventViewSet(viewsets.ModelViewSet):
+    queryset = Event.objects.filter(is_active=True)
+    serializer_class = EventSerializer
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        with transaction.atomic():
+            event = serializer.save()
+
+            # Create default columns
+            default_columns = [
+                {'title': 'Resource', 'position': 0},
+                {'title': 'Staging', 'position': 1},
+                {'title': 'Command', 'position': 2},
+                {'title': 'Message', 'position': 3},
+                {'title': 'Shadow', 'position': 4}
+            ]
+
+            for column_data in default_columns:
+                TCardColumn.objects.create(
+                    event=event,
+                    title=column_data['title'],
+                    position=column_data['position']
+                )
+                print(column_data)
+
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+    def get_queryset(self):
+        include_archived = self.request.query_params.get('include_archived', 'false').lower() == 'true'
+        if include_archived:
+            return Event.objects.all()
+        return Event.objects.filter(is_active=True)
+
+    def get_object(self):
+        # Override get_object to find events regardless of active status
+        queryset = Event.objects.all()
+        filter_kwargs = {'pk': self.kwargs['pk']}
+        obj = get_object_or_404(queryset, **filter_kwargs)
+        self.check_object_permissions(self.request, obj)
+        return obj
+
+    @action(detail=False, methods=['get'])
+    def inactive(self, request):
+        inactive_events = Event.objects.filter(is_active=False)
+        serializer = self.get_serializer(inactive_events, many=True)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['post'])
+    def deactivate(self, request, pk=None):
+        event = self.get_object()
+        event.active = False
+        event.save()
+        return Response({'status': 'event deactivated'})
+
+    @action(detail=True, methods=['post'])
+    def activate(self, request, pk=None):
+        event = self.get_object()
+        event.active = True
+        event.save()
+        return Response({'status': 'event activated'})
+
+class EventOperatorViewSet(viewsets.ModelViewSet):
+    queryset = EventOperator.objects.all()
+    serializer_class = EventOperatorSerializer
+
+    def get_queryset(self):
+        event_id = self.request.query_params.get('event', None)
+        if event_id:
+            return EventOperator.objects.filter(event_id=event_id)
+        return EventOperator.objects.all()
+
+    @action(detail=True, methods=['post'])
+    def mark_heard(self, request, pk=None):
+        event_operator = self.get_object()
+        event_operator.last_heard = timezone.now()
+        event_operator.save()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=['post'])
+    def check_out(self, request, pk=None):
+        event_operator = self.get_object()
+        event_operator.checked_out = timezone.now()
+        event_operator.save()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 class TCardColumnViewSet(viewsets.ModelViewSet):
     queryset = TCardColumn.objects.all()
@@ -58,55 +149,44 @@ class TCardColumnViewSet(viewsets.ModelViewSet):
             raise serializers.ValidationError({'event': f'Event with id {event_id} does not exist.'})
 
         try:
-            serializer.save(event_id=event_id)
+            instance = serializer.save(event_id=event_id)
             logger.debug("Successfully saved column")
         except Exception as e:
             logger.error("Error saving column: %s", str(e))
             raise
 
+        # Log the activity
+        ActivityLog.objects.create(
+            event=instance.event,
+            action='ADD_COLUMN',
+            details=f'Added T Card column: {instance.title}'
+        )
+
     def perform_update(self, serializer):
-        serializer.save()
+        instance = serializer.save()
+        # Log the activity
+        ActivityLog.objects.create(
+            event=instance.event,
+            action='UPDATE_COLUMN',
+            details=f'Updated T Card column: {instance.title}'
+        )
 
-class EventViewSet(viewsets.ModelViewSet):
-    queryset = Event.objects.all()
-    serializer_class = EventSerializer
+    def perform_destroy(self, instance):
+        # Log the activity before deletion
+        ActivityLog.objects.create(
+            event=instance.event,
+            action='DELETE_COLUMN',
+            details=f'Deleted T Card column: {instance.title}'
+        )
+        instance.delete()
 
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
 
-        with transaction.atomic():
-            event = serializer.save()
+class NetworkViewSet(viewsets.ModelViewSet):
+    queryset = Network.objects.all()
+    serializer_class = NetworkSerializer
 
-            # Create default columns
-            default_columns = [
-                {'title': 'Resource', 'position': 0},
-                {'title': 'Staging', 'position': 1},
-                {'title': 'Command', 'position': 2},
-                {'title': 'Message', 'position': 3},
-                {'title': 'Shadow', 'position': 4}
-            ]
-
-            for column_data in default_columns:
-                TCardColumn.objects.create(
-                    event=event,
-                    title=column_data['title'],
-                    position=column_data['position']
-                )
-
-        headers = self.get_success_headers(serializer.data)
-        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
-
-    @action(detail=True, methods=['post'])
-    def deactivate(self, request, pk=None):
-        event = self.get_object()
-        event.active = False
-        event.save()
-        return Response({'status': 'event deactivated'})
-
-    @action(detail=True, methods=['post'])
-    def activate(self, request, pk=None):
-        event = self.get_object()
-        event.active = True
-        event.save()
-        return Response({'status': 'event activated'})
+    def get_queryset(self):
+        event_id = self.request.query_params.get('event', None)
+        if event_id:
+            return Network.objects.filter(event_id=event_id)
+        return Network.objects.all()

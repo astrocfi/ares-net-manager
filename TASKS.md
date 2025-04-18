@@ -87,11 +87,11 @@
 - Add activity logging
 
 #### TCardRack Component
-✅ Create TCardRack component
-✅ Implement drag and drop functionality
+- Create TCardRack component
+- Implement drag and drop functionality
 - Add card creation
 - Add card editing
-✅ Add column management
+- Add column management
 - Implement real-time updates
 - Add undo/redo support
 
