@@ -43,7 +43,7 @@
 
 #### Layout
 ✅ Create Layout component
-- Add responsive design
+✅ Add responsive design
 ✅ Implement dark/light theme toggle
 
 #### EventList Page
@@ -56,11 +56,20 @@
 ✅ Add error handling with Snackbar alerts
 ✅ Add keyboard support for form submission
 ✅ Add tooltips for buttons
-- Add event search/filter functionality
+✅ Add event search/filter functionality
+✅ Add include archived events toggle
+✅ Add event archiving/restoring functionality
+✅ Update button labels and styling
 
 #### EventDetail Page
-- Create EventDetail component
-- Implement event information display
+✅ Create EventDetail component
+✅ Implement event information display
+✅ Add event editing functionality
+✅ Add event archiving/restoring functionality
+✅ Add event deletion functionality
+✅ Add form validation
+✅ Add error handling
+✅ Add tooltips for buttons
 - Add network management
 - Add event settings (health/welfare time)
 - Add activity log display

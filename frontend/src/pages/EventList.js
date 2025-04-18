@@ -355,9 +355,9 @@ const EventList = () => {
                   variant="contained"
                   color="primary"
                   onClick={() => navigate(`/events/${event.id}`)}
-                  sx={{ mr: 2, minWidth: '100px' }}
+                  sx={{ mr: 1 }}
                 >
-                  SELECT
+                  DETAILS
                 </Button>
               </Tooltip>
               <ListItemText
