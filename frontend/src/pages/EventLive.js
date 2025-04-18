@@ -20,6 +20,7 @@ import {
   TextField
 } from '@mui/material';
 import { apiService } from '../services/apiService';
+import { tCardService } from '../services/tCardService';
 import TCardRack from '../components/TCardRack';
 import AddIcon from '@mui/icons-material/Add';
 
@@ -33,13 +34,6 @@ const EventLive = () => {
   const [view, setView] = useState('tcard');
   const [newColumnDialogOpen, setNewColumnDialogOpen] = useState(false);
   const [newColumnTitle, setNewColumnTitle] = useState('');
-  const [columns, setColumns] = useState([
-    { id: 'resource', title: 'Resource' },
-    { id: 'staging', title: 'Staging' },
-    { id: 'command', title: 'Command' },
-    { id: 'message', title: 'Message' },
-    { id: 'shadow', title: 'Shadow' }
-  ]);
 
   useEffect(() => {
     if (eventId) {
@@ -54,6 +48,7 @@ const EventLive = () => {
       if (!response?.data) {
         throw new Error('No data received from API');
       }
+      console.log('Fetched event data:', response.data);
       setEvent(response.data);
       setLoading(false);
     } catch (error) {
@@ -85,45 +80,40 @@ const EventLive = () => {
     }
   };
 
-  const handleAddColumn = () => {
-    if (newColumnTitle.trim()) {
-      const newColumn = {
-        id: `column-${Date.now()}`,
-        title: newColumnTitle.trim(),
-      };
-      setColumns(prevColumns => [...prevColumns, newColumn]);
+  const handleAddColumn = async () => {
+    try {
+      setLoading(true);
+      await tCardService.createColumn(eventId, newColumnTitle, event?.columns?.length || 0);
       setNewColumnDialogOpen(false);
       setNewColumnTitle('');
+      await fetchEvent(); // Refresh the event data to get the new column
+    } catch (error) {
+      console.error('Error adding column:', error);
+      showError('Failed to add column: ' + (error.response?.data?.detail || error.message || 'Unknown error'));
+    } finally {
+      setLoading(false);
     }
   };
 
-  if (loading) {
+  if (loading && !event) {
     return (
-      <Container>
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-          <CircularProgress />
-        </Box>
-      </Container>
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+        <CircularProgress />
+      </Box>
     );
   }
 
-  if (!event) {
+  if (error) {
     return (
-      <Container>
-        <Box sx={{ mt: 4 }}>
-          <Typography variant="h5" color="error">Event not found</Typography>
-          <Button onClick={handleBack} sx={{ mt: 2 }}>Back to Events</Button>
-        </Box>
-      </Container>
+      <Box sx={{ p: 2, color: 'error.main' }}>
+        <Typography>Error: {error}</Typography>
+        <Button onClick={handleBack}>Back to Events</Button>
+      </Box>
     );
   }
 
   return (
-    <Box sx={{
-      height: '100%',
-      display: 'flex',
-      flexDirection: 'column'
-    }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <Box sx={{
         flex: '0 0 auto',
         py: 2,
@@ -164,30 +154,15 @@ const EventLive = () => {
         </Box>
       </Box>
 
-      <Box sx={{
-        flex: 1,
-        overflow: 'hidden'
-      }}>
-        {view === 'tcard' ? (
-          <TCardRack
-            columns={columns}
-            setColumns={setColumns}
-          />
-        ) : (
-          <Box>
-            {/* Network Status view will be implemented later */}
-            Network Status View
-          </Box>
-        )}
+      <Box sx={{ flex: 1, overflow: 'hidden' }}>
+        <TCardRack
+          eventId={eventId}
+          columns={event?.columns || []}
+          onColumnsChange={fetchEvent}
+        />
       </Box>
 
-      <Dialog
-        open={newColumnDialogOpen}
-        onClose={() => {
-          setNewColumnDialogOpen(false);
-          setNewColumnTitle('');
-        }}
-      >
+      <Dialog open={newColumnDialogOpen} onClose={() => setNewColumnDialogOpen(false)}>
         <DialogTitle>Add New Column</DialogTitle>
         <DialogContent>
           <TextField
@@ -197,15 +172,13 @@ const EventLive = () => {
             fullWidth
             value={newColumnTitle}
             onChange={(e) => setNewColumnTitle(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleAddColumn()}
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => {
-            setNewColumnDialogOpen(false);
-            setNewColumnTitle('');
-          }}>Cancel</Button>
-          <Button onClick={handleAddColumn} variant="contained">Add</Button>
+          <Button onClick={() => setNewColumnDialogOpen(false)}>Cancel</Button>
+          <Button onClick={handleAddColumn} variant="contained" disabled={!newColumnTitle.trim()}>
+            Add
+          </Button>
         </DialogActions>
       </Dialog>
 

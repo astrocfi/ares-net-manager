@@ -4,11 +4,11 @@ from rest_framework.response import Response
 from django.utils import timezone
 from core.models import (
     Operator, OperatorCredential, Event, Network,
-    EventOperator, ActivityLog
+    EventOperator, ActivityLog, TCardColumn
 )
 from .serializers import (
     OperatorSerializer, EventSerializer, NetworkSerializer,
-    EventOperatorSerializer, ActivityLogSerializer
+    EventOperatorSerializer, ActivityLogSerializer, TCardColumnSerializer
 )
 from django.shortcuts import get_object_or_404
 
@@ -122,3 +122,40 @@ class ActivityLogViewSet(viewsets.ModelViewSet):
         if event_id:
             return ActivityLog.objects.filter(event_id=event_id)
         return ActivityLog.objects.all()
+
+class TCardColumnViewSet(viewsets.ModelViewSet):
+    queryset = TCardColumn.objects.all()
+    serializer_class = TCardColumnSerializer
+
+    def get_queryset(self):
+        event_id = self.request.query_params.get('event', None)
+        if event_id:
+            return TCardColumn.objects.filter(event_id=event_id)
+        return TCardColumn.objects.all()
+
+    def perform_create(self, serializer):
+        instance = serializer.save()
+        # Log the activity
+        ActivityLog.objects.create(
+            event=instance.event,
+            action='ADD_COLUMN',
+            details=f'Added T Card column: {instance.title}'
+        )
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        # Log the activity
+        ActivityLog.objects.create(
+            event=instance.event,
+            action='UPDATE_COLUMN',
+            details=f'Updated T Card column: {instance.title}'
+        )
+
+    def perform_destroy(self, instance):
+        # Log the activity before deletion
+        ActivityLog.objects.create(
+            event=instance.event,
+            action='DELETE_COLUMN',
+            details=f'Deleted T Card column: {instance.title}'
+        )
+        instance.delete()

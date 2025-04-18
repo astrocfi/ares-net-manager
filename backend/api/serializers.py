@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from core.models import Event, Network, Operator, EventOperator, ActivityLog
+from core.models import Event, Network, Operator, EventOperator, ActivityLog, TCardColumn
 
 class OperatorSerializer(serializers.ModelSerializer):
     class Meta:
@@ -11,10 +11,18 @@ class NetworkSerializer(serializers.ModelSerializer):
         model = Network
         fields = ['id', 'event', 'name', 'network_type', 'created_at']
 
+class TCardColumnSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TCardColumn
+        fields = ['id', 'event', 'title', 'position']
+        read_only_fields = ['id']
+
 class EventSerializer(serializers.ModelSerializer):
+    columns = TCardColumnSerializer(many=True, read_only=True)
+
     class Meta:
         model = Event
-        fields = ['id', 'name', 'location', 'description', 'start_time', 'end_time', 'created_at', 'is_active', 'health_welfare_time']
+        fields = ['id', 'name', 'location', 'description', 'start_time', 'end_time', 'created_at', 'is_active', 'health_welfare_time', 'columns']
 
 class EventOperatorSerializer(serializers.ModelSerializer):
     operator = OperatorSerializer(read_only=True)

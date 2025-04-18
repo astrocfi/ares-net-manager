@@ -8,6 +8,7 @@ router.register(r'events', views.EventViewSet)
 router.register(r'networks', views.NetworkViewSet)
 router.register(r'event-operators', views.EventOperatorViewSet)
 router.register(r'activity-logs', views.ActivityLogViewSet)
+router.register(r't-card-columns', views.TCardColumnViewSet)
 
 urlpatterns = [
     path('', include(router.urls)),

@@ -29,8 +29,8 @@ class OperatorCredential(models.Model):
         unique_together = ('operator', 'credential')
 
 class Event(models.Model):
-    name = models.CharField(max_length=200)
-    location = models.CharField(max_length=200)
+    name = models.CharField(max_length=255)
+    location = models.CharField(max_length=255)
     description = models.TextField(blank=True)
     start_time = models.DateTimeField()
     end_time = models.DateTimeField()
@@ -39,7 +39,7 @@ class Event(models.Model):
     health_welfare_time = models.IntegerField(default=30)  # in minutes
 
     def __str__(self):
-        return f"{self.name} - {self.location}"
+        return self.name
 
 class Network(models.Model):
     NETWORK_TYPES = [
@@ -80,3 +80,14 @@ class ActivityLog(models.Model):
 
     def __str__(self):
         return f"{self.timestamp} - {self.action} - {self.event.name}"
+
+class TCardColumn(models.Model):
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='columns')
+    title = models.CharField(max_length=255)
+    position = models.IntegerField(default=0)
+
+    class Meta:
+        ordering = ['position']
+
+    def __str__(self):
+        return f"{self.title} ({self.event.name})"
