@@ -12,8 +12,16 @@ import {
   Alert,
   ToggleButtonGroup,
   ToggleButton,
+  Tooltip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField
 } from '@mui/material';
 import { apiService } from '../services/apiService';
+import TCardRack from '../components/TCardRack';
+import AddIcon from '@mui/icons-material/Add';
 
 const EventLive = () => {
   const { eventId } = useParams();
@@ -22,7 +30,16 @@ const EventLive = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [errorOpen, setErrorOpen] = useState(false);
-  const [currentView, setCurrentView] = useState('tcard');
+  const [view, setView] = useState('tcard');
+  const [newColumnDialogOpen, setNewColumnDialogOpen] = useState(false);
+  const [newColumnTitle, setNewColumnTitle] = useState('');
+  const [columns, setColumns] = useState([
+    { id: 'resource', title: 'Resource' },
+    { id: 'staging', title: 'Staging' },
+    { id: 'command', title: 'Command' },
+    { id: 'message', title: 'Message' },
+    { id: 'shadow', title: 'Shadow' }
+  ]);
 
   useEffect(() => {
     if (eventId) {
@@ -64,7 +81,19 @@ const EventLive = () => {
 
   const handleViewChange = (event, newView) => {
     if (newView !== null) {
-      setCurrentView(newView);
+      setView(newView);
+    }
+  };
+
+  const handleAddColumn = () => {
+    if (newColumnTitle.trim()) {
+      const newColumn = {
+        id: `column-${Date.now()}`,
+        title: newColumnTitle.trim(),
+      };
+      setColumns(prevColumns => [...prevColumns, newColumn]);
+      setNewColumnDialogOpen(false);
+      setNewColumnTitle('');
     }
   };
 
@@ -90,73 +119,95 @@ const EventLive = () => {
   }
 
   return (
-    <Container>
-      <Box sx={{ mt: 4, mb: 4 }}>
-        {/* View Selection Buttons */}
-        <Box sx={{ mb: 3, display: 'flex', justifyContent: 'center' }}>
+    <Box sx={{
+      height: '100%',
+      display: 'flex',
+      flexDirection: 'column'
+    }}>
+      <Box sx={{
+        flex: '0 0 auto',
+        py: 2,
+        px: 2
+      }}>
+        <Box sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: 2
+        }}>
           <ToggleButtonGroup
-            value={currentView}
+            value={view}
             exclusive
             onChange={handleViewChange}
             aria-label="view selection"
+            size="large"
           >
-            <ToggleButton
-              value="tcard"
-              aria-label="T Card Rack"
-              sx={{ px: 4, py: 1 }}
-            >
+            <ToggleButton value="tcard" aria-label="T Card Rack">
               T Card Rack
             </ToggleButton>
-            <ToggleButton
-              value="network1"
-              aria-label="Network #1"
-              sx={{ px: 4, py: 1 }}
-            >
-              Network #1
-            </ToggleButton>
-            <ToggleButton
-              value="network2"
-              aria-label="Network #2"
-              sx={{ px: 4, py: 1 }}
-            >
-              Network #2
+            <ToggleButton value="network" aria-label="Network Status">
+              Network Status
             </ToggleButton>
           </ToggleButtonGroup>
+          {view === 'tcard' && (
+            <Tooltip title="Add new column">
+              <Button
+                variant="outlined"
+                startIcon={<AddIcon />}
+                onClick={() => setNewColumnDialogOpen(true)}
+                size="small"
+              >
+                Add Column
+              </Button>
+            </Tooltip>
+          )}
         </Box>
-
-        {/* Content Area */}
-        <Paper sx={{ p: 3, height: '600px' }}>
-          {currentView === 'tcard' && (
-            <Box>
-              <Typography variant="h6" gutterBottom>T Card Rack</Typography>
-              <Divider sx={{ mb: 2 }} />
-              <Box sx={{ height: '500px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                <Typography color="text.secondary">T Card Rack Component Coming Soon</Typography>
-              </Box>
-            </Box>
-          )}
-
-          {currentView === 'network1' && (
-            <Box>
-              <Typography variant="h6" gutterBottom>Network #1</Typography>
-              <Divider sx={{ mb: 2 }} />
-              <Box sx={{ height: '500px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                <Typography color="text.secondary">Network Status Component Coming Soon</Typography>
-              </Box>
-            </Box>
-          )}
-
-          {currentView === 'network2' && (
-            <Box>
-              <Typography variant="h6" gutterBottom>Network #2</Typography>
-              <Divider sx={{ mb: 2 }} />
-              <Box sx={{ height: '500px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                <Typography color="text.secondary">Network Status Component Coming Soon</Typography>
-              </Box>
-            </Box>
-          )}
-        </Paper>
       </Box>
+
+      <Box sx={{
+        flex: 1,
+        overflow: 'hidden'
+      }}>
+        {view === 'tcard' ? (
+          <TCardRack
+            columns={columns}
+            setColumns={setColumns}
+          />
+        ) : (
+          <Box>
+            {/* Network Status view will be implemented later */}
+            Network Status View
+          </Box>
+        )}
+      </Box>
+
+      <Dialog
+        open={newColumnDialogOpen}
+        onClose={() => {
+          setNewColumnDialogOpen(false);
+          setNewColumnTitle('');
+        }}
+      >
+        <DialogTitle>Add New Column</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Column Title"
+            fullWidth
+            value={newColumnTitle}
+            onChange={(e) => setNewColumnTitle(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && handleAddColumn()}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => {
+            setNewColumnDialogOpen(false);
+            setNewColumnTitle('');
+          }}>Cancel</Button>
+          <Button onClick={handleAddColumn} variant="contained">Add</Button>
+        </DialogActions>
+      </Dialog>
 
       <Snackbar
         open={errorOpen}
@@ -168,7 +219,7 @@ const EventLive = () => {
           {error}
         </Alert>
       </Snackbar>
-    </Container>
+    </Box>
   );
 };
 

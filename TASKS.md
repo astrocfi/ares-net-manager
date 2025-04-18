@@ -77,6 +77,8 @@
 #### EventLive Page
 ✅ Create EventLive component
 ✅ Add basic layout with T Card Rack and Network Status sections
+✅ Add view selection buttons
+✅ Implement responsive header with event name
 - Implement T Card Rack functionality
 - Implement Network Status display
 - Add real-time updates
@@ -108,6 +110,7 @@
 - Create NetworkSelector component
 - Create ActivityLog component
 - Create UndoRedo controls
+✅ Implement responsive header with event name display
 
 ### Features
 

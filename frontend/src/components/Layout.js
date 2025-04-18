@@ -35,7 +35,7 @@ function Layout() {
   }, [location.pathname, isLivePage]);
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
       <AppBar position="static">
         <Toolbar>
           <Typography
@@ -69,9 +69,9 @@ function Layout() {
       <Box
         component="main"
         sx={{
-          flexGrow: 1,
-          p: 3,
-          minHeight: 'calc(100vh - 64px)',
+          flex: 1,
+          overflow: 'hidden',
+          ...(isLivePage ? {} : { p: 3 })
         }}
       >
         <Outlet />
