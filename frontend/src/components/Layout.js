@@ -1,14 +1,38 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Box, AppBar, Toolbar, Typography, IconButton } from '@mui/material';
-import { Outlet, useNavigate } from 'react-router-dom';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
+import { Outlet } from 'react-router-dom';
 import useStore from '../store';
+import { apiService } from '../services/apiService';
 
 function Layout() {
-  console.log('Layout component rendering');
   const navigate = useNavigate();
   const { darkMode, toggleDarkMode } = useStore();
+  const location = useLocation();
+  const isLivePage = location.pathname.includes('/live');
+  const [eventName, setEventName] = useState(null);
+
+  useEffect(() => {
+    const fetchEventName = async () => {
+      if (isLivePage) {
+        const eventId = location.pathname.split('/')[2];
+        try {
+          const response = await apiService.get(`/events/${eventId}/`);
+          if (response?.data?.name) {
+            setEventName(response.data.name);
+          }
+        } catch (error) {
+          console.error('Error fetching event name:', error);
+        }
+      } else {
+        setEventName(null);
+      }
+    };
+
+    fetchEventName();
+  }, [location.pathname, isLivePage]);
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
@@ -17,11 +41,26 @@ function Layout() {
           <Typography
             variant="h6"
             component="div"
-            sx={{ flexGrow: 1, cursor: 'pointer' }}
+            sx={{ cursor: 'pointer' }}
             onClick={() => navigate('/')}
           >
             ARES Net Manager
           </Typography>
+          {eventName && (
+            <Box sx={{ flexGrow: 1, display: 'flex', justifyContent: 'center' }}>
+              <Typography
+                component="div"
+                sx={{
+                  fontSize: '1.5em',
+                  fontWeight: 700,
+                  opacity: 1,
+                  letterSpacing: '0.5px'
+                }}
+              >
+                {eventName}
+              </Typography>
+            </Box>
+          )}
           <IconButton onClick={toggleDarkMode} color="inherit">
             {darkMode ? <Brightness7Icon /> : <Brightness4Icon />}
           </IconButton>
@@ -35,7 +74,6 @@ function Layout() {
           minHeight: 'calc(100vh - 64px)',
         }}
       >
-        {console.log('Layout rendering Outlet')}
         <Outlet />
       </Box>
     </Box>

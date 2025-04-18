@@ -74,6 +74,16 @@
 - Add event settings (health/welfare time)
 - Add activity log display
 
+#### EventLive Page
+✅ Create EventLive component
+✅ Add basic layout with T Card Rack and Network Status sections
+- Implement T Card Rack functionality
+- Implement Network Status display
+- Add real-time updates
+- Add operator management
+- Add health/welfare check functionality
+- Add activity logging
+
 #### TCardRack Component
 - Create TCardRack component
 - Implement drag and drop functionality

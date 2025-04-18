@@ -102,7 +102,7 @@ const EventDetail = () => {
   };
 
   const handleBack = () => {
-    navigate('/');
+    navigate('/events');
   };
 
   const handleEditOpen = () => {
@@ -184,7 +184,7 @@ const EventDetail = () => {
     try {
       await apiService.delete(`/events/${eventId}/`);
       handleDeleteClose();
-      navigate('/');
+      navigate('/events');
     } catch (error) {
       console.error('Error deleting event:', error);
       showError('Failed to delete event: ' + (error.response?.data?.detail || error.message || 'Unknown error'));
@@ -248,7 +248,7 @@ const EventDetail = () => {
                 <DeleteIcon />
               </IconButton>
             </Tooltip>
-            <Button onClick={handleBack}>Back to Events</Button>
+            <Button onClick={() => navigate(`/events/${event.id}`)}>Back to Events</Button>
           </Box>
         </Box>
 

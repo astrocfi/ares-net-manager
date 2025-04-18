@@ -350,14 +350,14 @@ const EventList = () => {
         {events && events.map((event) => (
           <ListItem key={event.id}>
             <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-              <Tooltip title="View event details">
+              <Tooltip title="Activate event for live operations">
                 <Button
                   variant="contained"
-                  color="primary"
-                  onClick={() => navigate(`/events/${event.id}`)}
+                  color="success"
+                  onClick={() => navigate(`/events/${event.id}/live`)}
                   sx={{ mr: 1 }}
                 >
-                  DETAILS
+                  ACTIVATE
                 </Button>
               </Tooltip>
               <ListItemText
@@ -384,6 +384,16 @@ const EventList = () => {
                 secondary={`${event.location} - ${format(new Date(event.start_time), 'PPpp')} to ${format(new Date(event.end_time), 'PPpp')}`}
                 sx={{ flex: 1 }}
               />
+              <Tooltip title="View event details">
+                <Button
+                  variant="outlined"
+                  color="primary"
+                  onClick={() => navigate(`/events/${event.id}`)}
+                  sx={{ mr: 1, minWidth: '80px' }}
+                >
+                  DETAILS
+                </Button>
+              </Tooltip>
               <Tooltip title="Edit event">
                 <IconButton
                   color="primary"
