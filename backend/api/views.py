@@ -10,6 +10,7 @@ from .serializers import (
     OperatorSerializer, EventSerializer, NetworkSerializer,
     EventOperatorSerializer, ActivityLogSerializer
 )
+from django.shortcuts import get_object_or_404
 
 class OperatorViewSet(viewsets.ModelViewSet):
     queryset = Operator.objects.all()
@@ -43,6 +44,20 @@ class EventViewSet(viewsets.ModelViewSet):
     queryset = Event.objects.filter(is_active=True)
     serializer_class = EventSerializer
 
+    def get_queryset(self):
+        include_archived = self.request.query_params.get('include_archived', 'false').lower() == 'true'
+        if include_archived:
+            return Event.objects.all()
+        return Event.objects.filter(is_active=True)
+
+    def get_object(self):
+        # Override get_object to find events regardless of active status
+        queryset = Event.objects.all()
+        filter_kwargs = {'pk': self.kwargs['pk']}
+        obj = get_object_or_404(queryset, **filter_kwargs)
+        self.check_object_permissions(self.request, obj)
+        return obj
+
     @action(detail=False, methods=['get'])
     def inactive(self, request):
         inactive_events = Event.objects.filter(is_active=False)
@@ -53,6 +68,13 @@ class EventViewSet(viewsets.ModelViewSet):
     def deactivate(self, request, pk=None):
         event = self.get_object()
         event.is_active = False
+        event.save()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=['post'])
+    def activate(self, request, pk=None):
+        event = self.get_object()
+        event.is_active = True
         event.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
 

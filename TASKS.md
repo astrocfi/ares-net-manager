@@ -22,6 +22,8 @@
 ✅ Create API views
 ✅ Create API URLs
 ✅ Create WebSocket consumer
+✅ Add event activation/deactivation endpoints
+✅ Add include_archived parameter support
 
 ### Database Migrations
 ✅ Create and apply initial migrations
@@ -50,6 +52,10 @@
 ✅ Add create event functionality
 ✅ Add delete event functionality
 ✅ Add show/hide inactive events toggle
+✅ Add form validation
+✅ Add error handling with Snackbar alerts
+✅ Add keyboard support for form submission
+✅ Add tooltips for buttons
 - Add event search/filter functionality
 
 #### EventDetail Page
@@ -113,7 +119,9 @@
 ✅ Add form validation
 ✅ Add loading states
 ✅ Add error handling
-- Add success/error notifications
+✅ Add success/error notifications
+✅ Add button tooltips
+✅ Add keyboard shortcuts
 
 ### Testing
 - Add unit tests for backend
