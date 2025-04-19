@@ -49,7 +49,6 @@ const Column = styled(Paper)(({ theme }) => ({
   flexDirection: 'column',
   gap: theme.spacing(1),
   minWidth: '250px',
-  maxHeight: '100%',
   userSelect: 'none',
   touchAction: 'none'
 }));
@@ -147,12 +146,25 @@ function SortableColumn({ column, cards, onEditCard, onDeleteCard, onAddCard, on
         onEditCard={onEditCard}
         onDeleteCard={onDeleteCard}
       />
-      <Box sx={{ p: 2, borderTop: 1, borderColor: 'divider' }}>
+      <Box
+        sx={{
+          p: 1,
+          borderTop: 1,
+          borderColor: 'divider',
+          '& button': {
+            width: '100%'
+          }
+        }}
+      >
         <Button
           variant="contained"
           color="primary"
-          onClick={handleAddCardClick}
-          fullWidth
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onAddCard(column.id);
+          }}
+          size="small"
         >
           Add Card
         </Button>
@@ -194,36 +206,36 @@ function Card({ card, onEdit, onDelete }) {
     <Paper
       ref={setNodeRef}
       style={style}
+      {...attributes}
+      {...listeners}
       sx={{
-        p: 2,
-        mb: 1,
+        p: 1,
+        mb: 0.5,
         bgcolor: 'background.paper',
         opacity: isDragging ? 0.5 : 1,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        minHeight: 'unset',
+        cursor: 'grab'
       }}
     >
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Box {...attributes} {...listeners} sx={{ cursor: 'grab', flex: 1 }}>
-          <Typography variant="subtitle1">{card.operator?.call_sign}</Typography>
-          <Typography variant="body2" color="text.secondary">
-            {card.operator?.name}
-          </Typography>
-        </Box>
-        <Box>
-          <IconButton size="small" onClick={handleEditClick}>
-            <EditIcon />
-          </IconButton>
-          <IconButton size="small" onClick={handleDeleteClick}>
-            <DeleteIcon />
-          </IconButton>
-        </Box>
+      <Box sx={{ flex: 1, display: 'flex', alignItems: 'center' }}>
+        <Typography variant="body2" sx={{ mr: 1 }}>
+          {card.operator?.name ? `${card.operator.name.split(' ').reverse().join(', ')}` : ''}
+        </Typography>
       </Box>
-      {card.notes && (
-        <Box {...attributes} {...listeners} sx={{ cursor: 'grab', mt: 1 }}>
-          <Typography variant="body2">
-            {card.notes}
-          </Typography>
-        </Box>
-      )}
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+        <Typography variant="body2" color="text.secondary">
+          {card.operator?.call_sign}
+        </Typography>
+        <IconButton size="small" onClick={handleEditClick} sx={{ p: 0.5 }}>
+          <EditIcon fontSize="small" />
+        </IconButton>
+        <IconButton size="small" onClick={handleDeleteClick} sx={{ p: 0.5 }}>
+          <DeleteIcon fontSize="small" />
+        </IconButton>
+      </Box>
     </Paper>
   );
 }
@@ -247,6 +259,9 @@ function ColumnContent({ column, cards, onEditCard, onDeleteCard }) {
         p: 1,
         backgroundColor: isOver ? 'rgba(0, 0, 0, 0.04)' : 'transparent',
         transition: 'background-color 0.2s ease',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 0.5
       }}
     >
       <SortableContext
@@ -279,7 +294,11 @@ const TCardRack = ({ eventId, columns, onColumnsChange }) => {
   const credentials = ['C4', 'F3', 'F2', 'F1', 'N3', 'N2', 'N1', 'P3', 'P2', 'P1', 'MAC', 'ERO'];
 
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
@@ -303,13 +322,19 @@ const TCardRack = ({ eventId, columns, onColumnsChange }) => {
 
   const handleDragEnd = async (event) => {
     const { active, over } = event;
-    if (!over) return;
+    console.log('Drag End Event:', { active, over });
+
+    if (!over) {
+      console.log('No over target, returning');
+      return;
+    }
 
     try {
       setLoading(true);
 
       // Handle column reordering
       if (active.id.toString().startsWith('column-') && over.id.toString().startsWith('column-')) {
+        console.log('Column reordering detected');
         const oldIndex = columns.findIndex(col => `column-${col.id}` === active.id);
         const newIndex = columns.findIndex(col => `column-${col.id}` === over.id);
 
@@ -327,46 +352,52 @@ const TCardRack = ({ eventId, columns, onColumnsChange }) => {
           onColumnsChange();
         }
       }
-      // Handle card reordering
-      else if (active.id.toString().startsWith('card-') && over.id.toString().startsWith('column-')) {
+      // Handle card movement
+      else if (active.id.toString().startsWith('card-')) {
+        console.log('Card movement detected');
         const cardId = parseInt(active.id.replace('card-', ''));
-        const columnId = parseInt(over.id.replace('column-', ''));
         const card = cards.find(c => c.id === cardId);
+        console.log('Moving card:', { cardId, card });
 
-        if (card) {
-          const newPosition = cards.filter(c => c.column === columnId).length;
-          await tCardService.moveCard(cardId, columnId, newPosition);
-          fetchCards();
-        }
-      }
-      // Handle card reordering within the same column
-      else if (active.id.toString().startsWith('card-') && over.id.toString().startsWith('card-')) {
-        const activeCardId = parseInt(active.id.replace('card-', ''));
-        const overCardId = parseInt(over.id.replace('card-', ''));
-        const activeCard = cards.find(c => c.id === activeCardId);
-        const overCard = cards.find(c => c.id === overCardId);
+        if (over.id.toString().startsWith('column-')) {
+          console.log('Moving to new column');
+          const newColumnId = parseInt(over.id.replace('column-', ''));
+          const newPosition = cards.filter(c => c.column === newColumnId).length;
+          await tCardService.moveCard(cardId, newColumnId, newPosition);
+        } else if (over.id.toString().startsWith('card-')) {
+          console.log('Reordering within column');
+          const overCardId = parseInt(over.id.replace('card-', ''));
+          const overCard = cards.find(c => c.id === overCardId);
 
-        if (activeCard && overCard && activeCard.column === overCard.column) {
-          const columnCards = cards
-            .filter(c => c.column === activeCard.column)
-            .sort((a, b) => a.position - b.position);
+          if (card.column === overCard.column) {
+            const columnCards = cards
+              .filter(c => c.column === card.column)
+              .sort((a, b) => a.position - b.position);
 
-          const oldIndex = columnCards.findIndex(c => c.id === activeCardId);
-          const newIndex = columnCards.findIndex(c => c.id === overCardId);
+            const oldIndex = columnCards.findIndex(c => c.id === cardId);
+            const newIndex = columnCards.findIndex(c => c.id === overCardId);
 
-          if (oldIndex !== newIndex) {
-            const reorderedCards = arrayMove(columnCards, oldIndex, newIndex);
-            // Update positions in sequence
-            for (let i = 0; i < reorderedCards.length; i++) {
-              await tCardService.moveCard(reorderedCards[i].id, reorderedCards[i].column, i);
+            if (oldIndex !== newIndex) {
+              const reorderedCards = arrayMove(columnCards, oldIndex, newIndex);
+              // Update positions in sequence
+              for (let i = 0; i < reorderedCards.length; i++) {
+                await tCardService.moveCard(reorderedCards[i].id, reorderedCards[i].column, i);
+              }
             }
-            fetchCards();
+          } else {
+            // Moving to a different column
+            const newColumnId = overCard.column;
+            const newPosition = cards.filter(c => c.column === newColumnId).length;
+            await tCardService.moveCard(cardId, newColumnId, newPosition);
           }
         }
+
+        const updatedCards = await tCardService.getCards(eventId);
+        setCards(updatedCards);
       }
     } catch (err) {
+      console.error('Error in handleDragEnd:', err);
       setError(err.message);
-      console.error('Error handling drag end:', err);
     } finally {
       setLoading(false);
     }
@@ -484,7 +515,9 @@ const TCardRack = ({ eventId, columns, onColumnsChange }) => {
           overflowX: 'auto',
           p: 2,
           gap: 2,
-          minHeight: '100%'
+          height: '100%',
+          boxSizing: 'border-box',
+          flex: 1
         }}
       >
         <SortableContext
@@ -530,9 +563,13 @@ const TCardRack = ({ eventId, columns, onColumnsChange }) => {
 
       <TCardDialog
         open={editCardDialogOpen}
-        onClose={() => setEditCardDialogOpen(false)}
+        onClose={() => {
+          setEditCardDialogOpen(false);
+          setEditingCard(null);
+        }}
         onSubmit={handleSaveCard}
         card={editingCard}
+        credentials={credentials}
       />
     </DndContext>
   );
