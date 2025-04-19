@@ -208,6 +208,14 @@ const EventDetail = () => {
     }
   };
 
+  const handleArchiveClick = () => {
+    if (event.is_active) {
+      handleArchiveOpen();
+    } else {
+      handleArchive();
+    }
+  };
+
   if (loading) {
     return (
       <Container>
@@ -241,7 +249,7 @@ const EventDetail = () => {
               </IconButton>
             </Tooltip>
             <Tooltip title={event.is_active ? "Archive event" : "Restore event"}>
-              <IconButton onClick={handleArchiveOpen} color="primary">
+              <IconButton onClick={handleArchiveClick} color={event.is_active ? "error" : "primary"}>
                 {event.is_active ? <ArchiveIcon /> : <UnarchiveIcon />}
               </IconButton>
             </Tooltip>
@@ -330,18 +338,16 @@ const EventDetail = () => {
 
       {/* Archive Dialog */}
       <Dialog open={archiveDialogOpen} onClose={handleArchiveClose}>
-        <DialogTitle>{event.is_active ? "Archive Event" : "Restore Event"}</DialogTitle>
+        <DialogTitle>Archive Event</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            {event.is_active
-              ? "Are you sure you want to archive this event? You can restore it later."
-              : "Are you sure you want to restore this event?"}
+            Are you sure you want to archive the event "{event.name}"? Archived events can be restored later.
           </DialogContentText>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleArchiveClose}>Cancel</Button>
-          <Button onClick={handleArchive} color="primary">
-            {event.is_active ? "Archive" : "Restore"}
+          <Button onClick={handleArchive} color="error">
+            Archive
           </Button>
         </DialogActions>
       </Dialog>

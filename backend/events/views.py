@@ -67,14 +67,14 @@ class EventViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def deactivate(self, request, pk=None):
         event = self.get_object()
-        event.active = False
+        event.is_active = False
         event.save()
         return Response({'status': 'event deactivated'})
 
     @action(detail=True, methods=['post'])
     def activate(self, request, pk=None):
         event = self.get_object()
-        event.active = True
+        event.is_active = True
         event.save()
         return Response({'status': 'event activated'})
 

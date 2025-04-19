@@ -74,7 +74,6 @@ const OperatorList = () => {
   const [operators, setOperators] = useState([]);
   const [open, setOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedOperator, setSelectedOperator] = useState(null);
   const [newOperator, setNewOperator] = useState({
     call_sign: '',
@@ -191,16 +190,6 @@ const OperatorList = () => {
     setEditFormErrors({});
   };
 
-  const handleDeleteOpen = (operator) => {
-    setSelectedOperator(operator);
-    setDeleteDialogOpen(true);
-  };
-
-  const handleDeleteClose = () => {
-    setDeleteDialogOpen(false);
-    setSelectedOperator(null);
-  };
-
   const handleChange = (field) => (event) => {
     let value = event.target.value;
     if (field === 'call_sign') {
@@ -286,19 +275,6 @@ const OperatorList = () => {
     }
   };
 
-  const handleDelete = async () => {
-    if (!selectedOperator) return;
-
-    try {
-      await apiService.delete(`/operators/${selectedOperator.id}/`);
-      fetchOperators();
-      handleDeleteClose();
-    } catch (error) {
-      console.error('Error deleting operator:', error);
-      showError('Failed to delete operator: ' + (error.response?.data?.detail || error.message));
-    }
-  };
-
   const isFormValid = () => {
     return newOperator.call_sign.trim() && newOperator.name.trim() &&
            (!newOperator.phone_primary || isValidPhoneNumber(newOperator.phone_primary)) &&
@@ -322,7 +298,6 @@ const OperatorList = () => {
         <Button
           variant="contained"
           color="primary"
-          startIcon={<AddIcon />}
           onClick={handleOpen}
         >
           Add Operator
@@ -342,8 +317,16 @@ const OperatorList = () => {
 
       <Box sx={{ flex: 1, overflow: 'auto' }}>
         <List sx={{ '& .MuiListItem-root': { py: 0.25 } }}>
-          {operators.map((operator) => (
-            <ListItem key={operator.id}>
+          {operators.map((operator, index) => (
+            <ListItem
+              key={operator.id}
+              sx={{
+                backgroundColor: index % 2 === 0 ? 'background.paper' : 'grey.100',
+                '&:hover': {
+                  backgroundColor: 'grey.200'
+                }
+              }}
+            >
               <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
                 <Grid container spacing={0.5} alignItems="center">
                   <Grid item xs={1}>
@@ -429,15 +412,6 @@ const OperatorList = () => {
                       alignItems: 'center',
                       height: '100%'
                     }}>
-                      <Tooltip title="Delete operator">
-                        <IconButton
-                          color="error"
-                          onClick={() => handleDeleteOpen(operator)}
-                          sx={{ padding: '4px' }}
-                        >
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
                     </Box>
                   </Grid>
                 </Grid>
@@ -735,22 +709,6 @@ const OperatorList = () => {
             </Button>
           </DialogActions>
         </form>
-      </Dialog>
-
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteDialogOpen} onClose={handleDeleteClose}>
-        <DialogTitle>Delete Operator</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            Are you sure you want to delete operator "{selectedOperator?.call_sign}"? This action cannot be undone.
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleDeleteClose}>Cancel</Button>
-          <Button onClick={handleDelete} color="error">
-            Delete
-          </Button>
-        </DialogActions>
       </Dialog>
     </Container>
   );
