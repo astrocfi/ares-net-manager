@@ -20,6 +20,7 @@ import {
   Tooltip,
   Snackbar,
   Alert,
+  Grid,
 } from '@mui/material';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { format } from 'date-fns';
@@ -29,6 +30,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ArchiveIcon from '@mui/icons-material/Archive';
 import UnarchiveIcon from '@mui/icons-material/Unarchive';
+import EventEditDialog from '../components/EventEditDialog';
 
 const EventList = () => {
   const navigate = useNavigate();
@@ -55,6 +57,8 @@ const EventList = () => {
   });
   const [error, setError] = useState(null);
   const [errorOpen, setErrorOpen] = useState(false);
+  const [formErrors, setFormErrors] = useState({});
+  const [editFormErrors, setEditFormErrors] = useState({});
 
   useEffect(() => {
     console.log('EventList component mounted');
@@ -306,7 +310,7 @@ const EventList = () => {
   };
 
   return (
-    <Container>
+    <Container sx={{ height: 'calc(100vh - 64px)', display: 'flex', flexDirection: 'column' }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4">Events</Typography>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -334,7 +338,6 @@ const EventList = () => {
         </Box>
       </Box>
 
-      {/* Error Snackbar */}
       <Snackbar
         open={errorOpen}
         autoHideDuration={6000}
@@ -346,206 +349,114 @@ const EventList = () => {
         </Alert>
       </Snackbar>
 
-      <List>
-        {events && events.map((event) => (
-          <ListItem key={event.id}>
-            <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-              <Tooltip title="Activate event for live operations">
-                <Button
-                  variant="contained"
-                  color="success"
-                  onClick={() => navigate(`/events/${event.id}/live`)}
-                  sx={{ mr: 1 }}
-                >
-                  ACTIVATE
-                </Button>
-              </Tooltip>
-              <ListItemText
-                primary={
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    {event.name}
-                    {!event.is_active && (
-                      <Typography
-                        variant="caption"
-                        sx={{
-                          ml: 1,
-                          px: 1,
-                          py: 0.5,
-                          bgcolor: 'grey.200',
-                          borderRadius: 1,
-                          color: 'text.secondary'
-                        }}
-                      >
-                        Archived
-                      </Typography>
-                    )}
-                  </Box>
-                }
-                secondary={`${event.location} - ${format(new Date(event.start_time), 'PPpp')} to ${format(new Date(event.end_time), 'PPpp')}`}
-                sx={{ flex: 1 }}
-              />
-              <Tooltip title="View event details">
-                <Button
-                  variant="outlined"
-                  color="primary"
-                  onClick={() => navigate(`/events/${event.id}`)}
-                  sx={{ mr: 1, minWidth: '80px' }}
-                >
-                  DETAILS
-                </Button>
-              </Tooltip>
-              <Tooltip title="Edit event">
-                <IconButton
-                  color="primary"
-                  onClick={() => handleEditOpen(event)}
-                  sx={{ mr: 1 }}
-                >
-                  <EditIcon />
-                </IconButton>
-              </Tooltip>
-              {!event.is_active ? (
-                <Tooltip title="Restore event">
+      <Box sx={{ flex: 1, overflow: 'auto' }}>
+        <List>
+          {events && events.map((event) => (
+            <ListItem key={event.id}>
+              <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+                <Tooltip title="Activate event for live operations">
+                  <Button
+                    variant="contained"
+                    color="success"
+                    onClick={() => navigate(`/events/${event.id}/live`)}
+                    sx={{ mr: 1 }}
+                  >
+                    ACTIVATE
+                  </Button>
+                </Tooltip>
+                <ListItemText
+                  primary={
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      {event.name}
+                      {!event.is_active && (
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            ml: 1,
+                            px: 1,
+                            py: 0.5,
+                            bgcolor: 'grey.200',
+                            borderRadius: 1,
+                            color: 'text.secondary'
+                          }}
+                        >
+                          Archived
+                        </Typography>
+                      )}
+                    </Box>
+                  }
+                  secondary={`${event.location} - ${format(new Date(event.start_time), 'PPpp')} to ${format(new Date(event.end_time), 'PPpp')}`}
+                  sx={{ flex: 1 }}
+                />
+                <Tooltip title="View event details">
+                  <Button
+                    variant="outlined"
+                    color="primary"
+                    onClick={() => navigate(`/events/${event.id}`)}
+                    sx={{ mr: 1, minWidth: '80px' }}
+                  >
+                    DETAILS
+                  </Button>
+                </Tooltip>
+                <Tooltip title="Edit event">
                   <IconButton
                     color="primary"
-                    onClick={() => handleRestore(event)}
+                    onClick={() => handleEditOpen(event)}
                     sx={{ mr: 1 }}
                   >
-                    <UnarchiveIcon />
+                    <EditIcon />
                   </IconButton>
                 </Tooltip>
-              ) : (
-                <Tooltip title="Archive event">
-                  <IconButton
-                    color="error"
-                    onClick={() => handleArchiveOpen(event)}
-                    sx={{ mr: 1 }}
-                  >
-                    <ArchiveIcon />
-                  </IconButton>
-                </Tooltip>
-              )}
-            </Box>
-          </ListItem>
-        ))}
-      </List>
+                {!event.is_active ? (
+                  <Tooltip title="Restore event">
+                    <IconButton
+                      color="primary"
+                      onClick={() => handleRestore(event)}
+                      sx={{ mr: 1 }}
+                    >
+                      <UnarchiveIcon />
+                    </IconButton>
+                  </Tooltip>
+                ) : (
+                  <Tooltip title="Archive event">
+                    <IconButton
+                      color="error"
+                      onClick={() => handleArchiveOpen(event)}
+                      sx={{ mr: 1 }}
+                    >
+                      <ArchiveIcon />
+                    </IconButton>
+                  </Tooltip>
+                )}
+              </Box>
+            </ListItem>
+          ))}
+        </List>
+      </Box>
 
       {/* Create Event Dialog */}
-      <Dialog open={open} onClose={handleClose}>
-        <DialogTitle>Create New Event</DialogTitle>
-        <form onSubmit={handleSubmit}>
-          <DialogContent>
-            <TextField
-              autoFocus
-              margin="dense"
-              label="Event Name"
-              fullWidth
-              value={newEvent.name}
-              onChange={handleChange('name')}
-              error={!newEvent.name.trim()}
-              helperText={!newEvent.name.trim() ? "Event name is required" : ""}
-            />
-            <TextField
-              margin="dense"
-              label="Location"
-              fullWidth
-              value={newEvent.location}
-              onChange={handleChange('location')}
-              error={!newEvent.location.trim()}
-              helperText={!newEvent.location.trim() ? "Location is required" : ""}
-            />
-            <TextField
-              margin="dense"
-              label="Description"
-              fullWidth
-              multiline
-              rows={4}
-              value={newEvent.description}
-              onChange={handleChange('description')}
-            />
-            <DateTimePicker
-              label="Start Time"
-              value={newEvent.start_time}
-              onChange={handleDateChange('start_time')}
-              sx={{ mt: 2, width: '100%' }}
-            />
-            <DateTimePicker
-              label="End Time"
-              value={newEvent.end_time}
-              onChange={handleDateChange('end_time')}
-              sx={{ mt: 2, width: '100%' }}
-            />
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={handleClose}>Cancel</Button>
-            <Button
-              type="submit"
-              color="primary"
-              disabled={!newEvent.name.trim() || !newEvent.location.trim()}
-            >
-              Create
-            </Button>
-          </DialogActions>
-        </form>
-      </Dialog>
+      <EventEditDialog
+        open={open}
+        onClose={handleClose}
+        onSubmit={handleSubmit}
+        event={newEvent}
+        setEvent={setNewEvent}
+        formErrors={formErrors}
+        setFormErrors={setFormErrors}
+        title="Add New Event"
+      />
 
       {/* Edit Event Dialog */}
-      <Dialog open={editDialogOpen} onClose={handleEditClose}>
-        <DialogTitle>Edit Event</DialogTitle>
-        <form onSubmit={handleEditSubmit}>
-          <DialogContent>
-            <TextField
-              autoFocus
-              margin="dense"
-              label="Event Name"
-              fullWidth
-              value={editEvent.name}
-              onChange={handleEditChange('name')}
-              error={!editEvent.name.trim()}
-              helperText={!editEvent.name.trim() ? "Event name is required" : ""}
-            />
-            <TextField
-              margin="dense"
-              label="Location"
-              fullWidth
-              value={editEvent.location}
-              onChange={handleEditChange('location')}
-              error={!editEvent.location.trim()}
-              helperText={!editEvent.location.trim() ? "Location is required" : ""}
-            />
-            <TextField
-              margin="dense"
-              label="Description"
-              fullWidth
-              multiline
-              rows={4}
-              value={editEvent.description}
-              onChange={handleEditChange('description')}
-            />
-            <DateTimePicker
-              label="Start Time"
-              value={editEvent.start_time}
-              onChange={handleEditDateChange('start_time')}
-              sx={{ mt: 2, width: '100%' }}
-            />
-            <DateTimePicker
-              label="End Time"
-              value={editEvent.end_time}
-              onChange={handleEditDateChange('end_time')}
-              sx={{ mt: 2, width: '100%' }}
-            />
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={handleEditClose}>Cancel</Button>
-            <Button
-              type="submit"
-              color="primary"
-              disabled={!editEvent.name.trim() || !editEvent.location.trim()}
-            >
-              Save Changes
-            </Button>
-          </DialogActions>
-        </form>
-      </Dialog>
+      <EventEditDialog
+        open={editDialogOpen}
+        onClose={handleEditClose}
+        onSubmit={handleEditSubmit}
+        event={editEvent}
+        setEvent={setEditEvent}
+        formErrors={editFormErrors}
+        setFormErrors={setEditFormErrors}
+        title="Edit Event"
+      />
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={deleteDialogOpen} onClose={handleDeleteClose}>

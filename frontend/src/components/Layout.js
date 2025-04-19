@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Box, AppBar, Toolbar, Typography, IconButton } from '@mui/material';
+import { Box, AppBar, Toolbar, Typography, IconButton, Button } from '@mui/material';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
 import { Outlet } from 'react-router-dom';
@@ -46,24 +46,36 @@ function Layout() {
           >
             ARES Net Manager
           </Typography>
-          {eventName && (
-            <Box sx={{ flexGrow: 1, display: 'flex', justifyContent: 'center' }}>
+          <Box sx={{ flexGrow: 1, display: 'flex', justifyContent: 'center' }}>
+            {eventName && (
               <Typography
-                component="div"
+                variant={isLivePage ? "h4" : "h6"}
                 sx={{
-                  fontSize: '1.5em',
-                  fontWeight: 700,
-                  opacity: 1,
-                  letterSpacing: '0.5px'
+                  fontWeight: isLivePage ? 'bold' : 'normal',
+                  textAlign: 'center'
                 }}
               >
                 {eventName}
               </Typography>
-            </Box>
-          )}
-          <IconButton onClick={toggleDarkMode} color="inherit">
-            {darkMode ? <Brightness7Icon /> : <Brightness4Icon />}
-          </IconButton>
+            )}
+          </Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Button
+              color="inherit"
+              onClick={() => navigate('/')}
+            >
+              Events
+            </Button>
+            <Button
+              color="inherit"
+              onClick={() => navigate('/operators')}
+            >
+              Operators
+            </Button>
+            <IconButton onClick={toggleDarkMode} color="inherit">
+              {darkMode ? <Brightness7Icon /> : <Brightness4Icon />}
+            </IconButton>
+          </Box>
         </Toolbar>
       </AppBar>
       <Box

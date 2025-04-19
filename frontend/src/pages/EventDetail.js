@@ -29,6 +29,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ArchiveIcon from '@mui/icons-material/Archive';
 import UnarchiveIcon from '@mui/icons-material/Unarchive';
+import EventEditDialog from '../components/EventEditDialog';
 
 const EventDetail = () => {
   const { eventId } = useParams();
@@ -47,6 +48,7 @@ const EventDetail = () => {
     end_time: new Date(),
     description: '',
   });
+  const [editFormErrors, setEditFormErrors] = useState({});
 
   useEffect(() => {
     if (eventId) {
@@ -248,7 +250,6 @@ const EventDetail = () => {
                 <DeleteIcon />
               </IconButton>
             </Tooltip>
-            <Button onClick={() => navigate(`/events/${event.id}`)}>Back to Events</Button>
           </Box>
         </Box>
 
@@ -300,65 +301,16 @@ const EventDetail = () => {
       </Box>
 
       {/* Edit Dialog */}
-      <Dialog open={editDialogOpen} onClose={handleEditClose}>
-        <DialogTitle>Edit Event</DialogTitle>
-        <form onSubmit={handleEditSubmit}>
-          <DialogContent>
-            <TextField
-              autoFocus
-              margin="dense"
-              label="Event Name"
-              fullWidth
-              value={editEvent?.name || ''}
-              onChange={handleEditChange('name')}
-              error={!editEvent?.name?.trim()}
-              helperText={!editEvent?.name?.trim() ? "Event name is required" : ""}
-            />
-            <TextField
-              margin="dense"
-              label="Location"
-              fullWidth
-              value={editEvent?.location || ''}
-              onChange={handleEditChange('location')}
-              error={!editEvent?.location?.trim()}
-              helperText={!editEvent?.location?.trim() ? "Location is required" : ""}
-            />
-            <LocalizationProvider dateAdapter={AdapterDateFns}>
-              <DateTimePicker
-                label="Start Time"
-                value={editEvent?.start_time || null}
-                onChange={handleDateChange('start_time')}
-                sx={{ mt: 2, width: '100%' }}
-              />
-              <DateTimePicker
-                label="End Time"
-                value={editEvent?.end_time || null}
-                onChange={handleDateChange('end_time')}
-                sx={{ mt: 2, width: '100%' }}
-              />
-            </LocalizationProvider>
-            <TextField
-              margin="dense"
-              label="Description"
-              fullWidth
-              multiline
-              rows={4}
-              value={editEvent?.description || ''}
-              onChange={handleEditChange('description')}
-            />
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={handleEditClose}>Cancel</Button>
-            <Button
-              type="submit"
-              color="primary"
-              disabled={!editEvent?.name?.trim() || !editEvent?.location?.trim()}
-            >
-              Save Changes
-            </Button>
-          </DialogActions>
-        </form>
-      </Dialog>
+      <EventEditDialog
+        open={editDialogOpen}
+        onClose={handleEditClose}
+        onSubmit={handleEditSubmit}
+        event={editEvent}
+        setEvent={setEditEvent}
+        formErrors={editFormErrors}
+        setFormErrors={setEditFormErrors}
+        title="Edit Event"
+      />
 
       {/* Delete Dialog */}
       <Dialog open={deleteDialogOpen} onClose={handleDeleteClose}>

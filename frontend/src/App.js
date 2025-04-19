@@ -9,6 +9,8 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import EventList from './pages/EventList';
 import EventDetail from './pages/EventDetail';
 import EventLive from './pages/EventLive';
+import OperatorList from './pages/OperatorList';
+import OperatorDetail from './pages/OperatorDetail';
 import TCardRack from './components/TCardRack';
 import NetworkDisplay from './components/NetworkDisplay';
 import Layout from './components/Layout';
@@ -46,11 +48,14 @@ function App() {
           <Routes>
             <Route element={<Layout />}>
               <Route path="/" element={<EventList />} />
+              <Route path="/events" element={<EventList />} />
               <Route path="/events/:eventId" element={<EventDetail />}>
                 <Route path="t-card-rack" element={<TCardRack />} />
                 <Route path="network/:networkId" element={<NetworkDisplay />} />
               </Route>
               <Route path="/events/:eventId/live" element={<EventLive />} />
+              <Route path="/operators" element={<OperatorList />} />
+              <Route path="/operators/:operatorId" element={<OperatorDetail />} />
             </Route>
           </Routes>
         </Router>
