@@ -84,7 +84,7 @@ class ActivityLogViewSet(viewsets.ModelViewSet):
     http_method_names = ['get', 'post']  # Only allow read and create operations
 
     def get_queryset(self):
-        event_id = self.request.query_params.get('event', None)
+        event_id = self.request.query_params.get('event_id', None)
         if event_id:
             return ActivityLog.objects.filter(event_id=event_id)
         return ActivityLog.objects.all()

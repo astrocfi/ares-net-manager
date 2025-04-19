@@ -4,11 +4,12 @@ from rest_framework.response import Response
 from rest_framework.decorators import action
 from django.utils import timezone
 from core.models import ActivityLog
-from .models import Event, TCardColumn, Network, EventOperator
-from .serializers import EventSerializer, TCardColumnSerializer, NetworkSerializer, EventOperatorSerializer
+from .models import Event, TCardColumn, Network, EventOperator, TCard, TCardActivity
+from .serializers import EventSerializer, TCardColumnSerializer, NetworkSerializer, EventOperatorSerializer, TCardSerializer, TCardActivitySerializer
 from django.db import transaction
 from rest_framework import serializers
 from django.shortcuts import get_object_or_404
+from core.models import Operator
 
 logger = logging.getLogger('events')
 
@@ -82,7 +83,7 @@ class EventOperatorViewSet(viewsets.ModelViewSet):
     serializer_class = EventOperatorSerializer
 
     def get_queryset(self):
-        event_id = self.request.query_params.get('event', None)
+        event_id = self.request.query_params.get('event_id', None)
         if event_id:
             return EventOperator.objects.filter(event_id=event_id)
         return EventOperator.objects.all()
@@ -106,53 +107,56 @@ class TCardColumnViewSet(viewsets.ModelViewSet):
     serializer_class = TCardColumnSerializer
 
     def get_queryset(self):
+        logger.debug("TCardColumnViewSet::get_queryset - Received request data: %s",
+                     self.request.query_params)
         queryset = TCardColumn.objects.all()
-        event_id = self.request.query_params.get('event', None)
-        if event_id is not None:
-            queryset = queryset.filter(event_id=event_id)
+        event_id = self.request.query_params.get('event_id', None)
+        if event_id is None:
+            raise serializers.ValidationError({'event_id': 'This field is required.'})
+        queryset = queryset.filter(event_id=event_id)
         return queryset.order_by('position')
 
     def create(self, request, *args, **kwargs):
-        logger.debug("Received request data: %s", request.data)
-        logger.debug("Request method: %s", request.method)
-        logger.debug("Request content type: %s", request.content_type)
+        logger.debug("TCardColumnViewSet::create - Received request data: %s", request.data)
+        logger.debug("TCardColumnViewSet::create - Request method: %s", request.method)
+        logger.debug("TCardColumnViewSet::create - Request content type: %s", request.content_type)
 
         serializer = self.get_serializer(data=request.data)
-        logger.debug("Serializer data: %s", serializer.initial_data)
+        logger.debug("TCardColumnViewSet::create - Serializer data: %s", serializer.initial_data)
 
         try:
             is_valid = serializer.is_valid()
-            logger.debug("Is valid: %s", is_valid)
+            logger.debug("TCardColumnViewSet::create - Is valid: %s", is_valid)
             if not is_valid:
-                logger.error("Validation errors: %s", serializer.errors)
+                logger.error("TCardColumnViewSet::create - Validation errors: %s", serializer.errors)
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
             self.perform_create(serializer)
             headers = self.get_success_headers(serializer.data)
             return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
         except Exception as e:
-            logger.error("Error in create: %s", str(e))
+            logger.error("TCardColumnViewSet::create - Error in create: %s", str(e))
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     def perform_create(self, serializer):
-        event_id = self.request.data.get('event')
-        logger.debug("Event ID from request: %s", event_id)
+        event_id = self.request.data.get('event_id')
+        logger.debug("TCardColumnViewSet::perform_create - Event ID from request: %s", event_id)
 
         if not event_id:
-            raise serializers.ValidationError({'event': 'This field is required.'})
+            raise serializers.ValidationError({'event_id': 'This field is required.'})
 
         try:
             event = Event.objects.get(id=event_id)
-            logger.debug("Found event: %s", event)
+            logger.debug("TCardColumnViewSet::perform_create - Found event: %s", event)
         except Event.DoesNotExist:
-            logger.error("Event with id %s does not exist", event_id)
-            raise serializers.ValidationError({'event': f'Event with id {event_id} does not exist.'})
+            logger.error("TCardColumnViewSet::perform_create - Event with id %s does not exist", event_id)
+            raise serializers.ValidationError({'event_id': f'Event with id {event_id} does not exist.'})
 
         try:
             instance = serializer.save(event_id=event_id)
-            logger.debug("Successfully saved column")
+            logger.debug("TCardColumnViewSet::perform_create - Successfully saved column")
         except Exception as e:
-            logger.error("Error saving column: %s", str(e))
+            logger.error("TCardColumnViewSet::perform_create - Error saving column: %s", str(e))
             raise
 
         # Log the activity
@@ -163,7 +167,9 @@ class TCardColumnViewSet(viewsets.ModelViewSet):
         )
 
     def perform_update(self, serializer):
+        logger.debug("TCardColumnViewSet::perform_update - Updated instance: %s", serializer.initial_data)
         instance = serializer.save()
+        logger.debug("TCardColumnViewSet::perform_update - Updated instance: %s", instance)
         # Log the activity
         ActivityLog.objects.create(
             event=instance.event,
@@ -172,6 +178,7 @@ class TCardColumnViewSet(viewsets.ModelViewSet):
         )
 
     def perform_destroy(self, instance):
+        logger.debug("TCardColumnViewSet::perform_destroy - Deleting instance: %s", instance)
         # Log the activity before deletion
         ActivityLog.objects.create(
             event=instance.event,
@@ -180,13 +187,74 @@ class TCardColumnViewSet(viewsets.ModelViewSet):
         )
         instance.delete()
 
+    @action(detail=True, methods=['post'])
+    def reorder(self, request, pk=None):
+        column = self.get_object()
+        new_position = request.data.get('position')
+
+        if new_position is not None:
+            # Get all columns for this event
+            columns = TCardColumn.objects.filter(event=column.event).order_by('position')
+
+            # Update positions
+            for col in columns:
+                if col == column:
+                    col.position = new_position
+                elif col.position >= new_position and col.position < column.position:
+                    col.position += 1
+                elif col.position <= new_position and col.position > column.position:
+                    col.position -= 1
+                col.save()
+
+        return Response(self.get_serializer(column).data)
 
 class NetworkViewSet(viewsets.ModelViewSet):
     queryset = Network.objects.all()
     serializer_class = NetworkSerializer
 
     def get_queryset(self):
-        event_id = self.request.query_params.get('event', None)
+        event_id = self.request.query_params.get('event_id', None)
         if event_id:
             return Network.objects.filter(event_id=event_id)
         return Network.objects.all()
+
+class TCardViewSet(viewsets.ModelViewSet):
+    queryset = TCard.objects.all()
+    serializer_class = TCardSerializer
+
+    def get_queryset(self):
+        queryset = TCard.objects.all()
+        event_id = self.request.query_params.get('event_id', None)
+        if event_id is not None:
+            queryset = queryset.filter(event_id=event_id)
+        return queryset.order_by('position')
+
+    @action(detail=True, methods=['post'])
+    def move(self, request, pk=None):
+        t_card = self.get_object()
+        new_column_id = request.data.get('column_id')
+        new_position = request.data.get('position')
+
+        if new_column_id is not None:
+            try:
+                new_column = TCardColumn.objects.get(id=new_column_id)
+                t_card.column = new_column
+            except TCardColumn.DoesNotExist:
+                return Response({'error': 'Column not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        if new_position is not None:
+            t_card.position = new_position
+
+        t_card.save()
+        return Response(self.get_serializer(t_card).data)
+
+class TCardActivityViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = TCardActivity.objects.all()
+    serializer_class = TCardActivitySerializer
+
+    def get_queryset(self):
+        queryset = TCardActivity.objects.all()
+        t_card_id = self.request.query_params.get('t_card_id', None)
+        if t_card_id is not None:
+            queryset = queryset.filter(t_card_id=t_card_id)
+        return queryset.order_by('-created_at')

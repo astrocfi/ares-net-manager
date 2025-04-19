@@ -13,6 +13,13 @@ class Event(models.Model):
     def __str__(self):
         return self.name
 
+    def get_unassigned_column(self):
+        column, created = TCardColumn.objects.get_or_create(
+            event=self,
+            title="Unassigned",
+            defaults={'position': -1}  # Position before all other columns
+        )
+        return column
 
 class Network(models.Model):
     event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='networks')
@@ -46,3 +53,42 @@ class TCardColumn(models.Model):
 
     def __str__(self):
         return f"{self.title} ({self.event.name})"
+
+class TCard(models.Model):
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='t_cards')
+    operator = models.ForeignKey("core.Operator", on_delete=models.CASCADE)
+    column = models.ForeignKey(TCardColumn, on_delete=models.SET_NULL, null=True, blank=True)
+    position = models.IntegerField(default=0)  # Position within the column
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['column__position', 'position']
+
+    def __str__(self):
+        return f"{self.operator.call_sign} in {self.event.name}"
+
+    def save(self, *args, **kwargs):
+        if not self.column:
+            self.column = self.event.get_unassigned_column()
+        super().save(*args, **kwargs)
+
+class TCardActivity(models.Model):
+    ACTIVITY_TYPES = [
+        ('CREATE', 'Card Created'),
+        ('MOVE', 'Moved to Column'),
+        ('UPDATE', 'Card Updated'),
+        ('DELETE', 'Card Deleted'),
+    ]
+
+    t_card = models.ForeignKey(TCard, on_delete=models.CASCADE, related_name='activities')
+    activity_type = models.CharField(max_length=10, choices=ACTIVITY_TYPES)
+    details = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.get_activity_type_display()} - {self.t_card.operator.call_sign}"

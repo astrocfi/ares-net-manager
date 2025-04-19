@@ -60,6 +60,7 @@
 ✅ Add include archived events toggle
 ✅ Add event archiving/restoring functionality
 ✅ Update button labels and styling
+✅ Create shared EventEditDialog component
 
 #### EventDetail Page
 ✅ Create EventDetail component
@@ -70,6 +71,7 @@
 ✅ Add form validation
 ✅ Add error handling
 ✅ Add tooltips for buttons
+✅ Use shared EventEditDialog component
 - Add network management
 - Add event settings (health/welfare time)
 - Add activity log display
@@ -111,6 +113,7 @@
 - Create ActivityLog component
 - Create UndoRedo controls
 ✅ Implement responsive header with event name display
+✅ Create shared EventEditDialog component
 
 ### Features
 

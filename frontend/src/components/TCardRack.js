@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Paper,
@@ -23,16 +23,20 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-  useDroppable
+  useDroppable,
+  useDraggable
 } from '@dnd-kit/core';
 import {
   arrayMove,
   SortableContext,
   sortableKeyboardCoordinates,
   horizontalListSortingStrategy,
-  useSortable
+  useSortable,
+  verticalListSortingStrategy
 } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { tCardService } from '../services/tCardService';
+import TCardDialog from './TCardDialog';
 
 const Column = styled(Paper)(({ theme }) => ({
   backgroundColor: theme.palette.mode === 'dark' ? '#1A2027' : '#fff',
@@ -58,114 +62,219 @@ const ColumnHeader = styled(Box)(({ theme }) => ({
   borderBottom: `1px solid ${theme.palette.divider}`,
 }));
 
-function SortableColumn({ column, onEdit, onDelete, onAddCard }) {
+function SortableColumn({ column, cards, onEditCard, onDeleteCard, onAddCard, onEditColumn, onDeleteColumn }) {
   const {
     attributes,
     listeners,
     setNodeRef,
     transform,
     transition,
-    isDragging
-  } = useSortable({ id: column.id });
+  } = useSortable({ id: `column-${column?.id || ''}` });
 
   const style = {
-    transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
+    transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
-    cursor: 'grab',
-    touchAction: 'none'
   };
 
   const handleEditClick = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    console.log('Edit clicked for column:', column);
-    onEdit(column);
+    onEditColumn(column);
   };
 
   const handleDeleteClick = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    console.log('Delete clicked for column:', column.id);
-    onDelete(column.id);
+    onDeleteColumn(column.id);
   };
 
   const handleAddCardClick = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    console.log('Add card clicked for column:', column.id);
     onAddCard(column.id);
   };
 
   return (
-    <div ref={setNodeRef} style={style} {...attributes}>
-      <Column elevation={3}>
-        <ColumnHeader>
-          <Box sx={{ display: 'flex', alignItems: 'center', flex: 1 }}>
-            <Box {...listeners} sx={{ cursor: 'grab', display: 'flex', alignItems: 'center', flex: 1 }}>
-              <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-                {column.title}
-              </Typography>
-            </Box>
-          </Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', ml: 'auto' }}>
-            <Tooltip title="Rename column">
-              <IconButton
-                size="small"
-                onClick={handleEditClick}
-                sx={{ mr: 1 }}
-              >
-                <EditIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Delete column">
-              <IconButton
-                size="small"
-                onClick={handleDeleteClick}
-              >
-                <DeleteIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-          </Box>
-        </ColumnHeader>
-        <Box sx={{
-          flex: 1,
-          overflowY: 'auto',
-          minHeight: 0
-        }}>
-          {/* Cards will be rendered here */}
+    <Paper
+      ref={setNodeRef}
+      style={style}
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+        minWidth: 300,
+        maxWidth: 300,
+        mr: 2,
+        flexShrink: 0
+      }}
+    >
+      <Box sx={{
+        p: 2,
+        borderBottom: 1,
+        borderColor: 'divider',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between'
+      }}>
+        <Box {...attributes} {...listeners} sx={{ cursor: 'grab', display: 'flex', alignItems: 'center', flex: 1 }}>
+          <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+            {column?.title || 'Untitled Column'}
+          </Typography>
         </Box>
-        <Box sx={{ p: 1, borderTop: '1px solid', borderColor: 'divider' }}>
-          <Button
-            fullWidth
-            variant="outlined"
-            onClick={handleAddCardClick}
-          >
-            Add Card
-          </Button>
+        <Box sx={{ display: 'flex', alignItems: 'center', ml: 'auto' }}>
+          <Tooltip title="Rename column">
+            <IconButton
+              size="small"
+              onClick={handleEditClick}
+              sx={{ mr: 1 }}
+            >
+              <EditIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Delete column">
+            <IconButton
+              size="small"
+              onClick={handleDeleteClick}
+            >
+              <DeleteIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
         </Box>
-      </Column>
-    </div>
+      </Box>
+      <ColumnContent
+        column={column}
+        cards={cards}
+        onEditCard={onEditCard}
+        onDeleteCard={onDeleteCard}
+      />
+      <Box sx={{ p: 2, borderTop: 1, borderColor: 'divider' }}>
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={handleAddCardClick}
+          fullWidth
+        >
+          Add Card
+        </Button>
+      </Box>
+    </Paper>
+  );
+}
+
+function Card({ card, onEdit, onDelete }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: `card-${card.id}` });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 1 : 'auto',
+    position: 'relative',
+  };
+
+  const handleEditClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onEdit(card);
+  };
+
+  const handleDeleteClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onDelete(card.id);
+  };
+
+  return (
+    <Paper
+      ref={setNodeRef}
+      style={style}
+      sx={{
+        p: 2,
+        mb: 1,
+        bgcolor: 'background.paper',
+        opacity: isDragging ? 0.5 : 1,
+      }}
+    >
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Box {...attributes} {...listeners} sx={{ cursor: 'grab', flex: 1 }}>
+          <Typography variant="subtitle1">{card.operator?.call_sign}</Typography>
+          <Typography variant="body2" color="text.secondary">
+            {card.operator?.name}
+          </Typography>
+        </Box>
+        <Box>
+          <IconButton size="small" onClick={handleEditClick}>
+            <EditIcon />
+          </IconButton>
+          <IconButton size="small" onClick={handleDeleteClick}>
+            <DeleteIcon />
+          </IconButton>
+        </Box>
+      </Box>
+      {card.notes && (
+        <Box {...attributes} {...listeners} sx={{ cursor: 'grab', mt: 1 }}>
+          <Typography variant="body2">
+            {card.notes}
+          </Typography>
+        </Box>
+      )}
+    </Paper>
+  );
+}
+
+function ColumnContent({ column, cards, onEditCard, onDeleteCard }) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: `column-${column?.id || ''}`,
+  });
+
+  const columnCards = cards
+    .filter(card => card.column === column?.id)
+    .sort((a, b) => a.position - b.position);
+
+  return (
+    <Box
+      ref={setNodeRef}
+      sx={{
+        flex: 1,
+        overflowY: 'auto',
+        minHeight: 0,
+        p: 1,
+        backgroundColor: isOver ? 'rgba(0, 0, 0, 0.04)' : 'transparent',
+        transition: 'background-color 0.2s ease',
+      }}
+    >
+      <SortableContext
+        items={columnCards.map(card => `card-${card.id}`)}
+        strategy={verticalListSortingStrategy}
+      >
+        {columnCards.map((card) => (
+          <Card
+            key={card.id}
+            card={card}
+            onEdit={onEditCard}
+            onDelete={onDeleteCard}
+          />
+        ))}
+      </SortableContext>
+    </Box>
   );
 }
 
 const TCardRack = ({ eventId, columns, onColumnsChange }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [cards, setCards] = useState([]);
   const [editingCard, setEditingCard] = useState(null);
   const [editingColumn, setEditingColumn] = useState(null);
-  const [newColumnTitle, setNewColumnTitle] = useState('');
-
-  const [editColumnDialogOpen, setEditColumnDialogOpen] = useState(false);
   const [editColumnTitle, setEditColumnTitle] = useState('');
-
+  const [editColumnDialogOpen, setEditColumnDialogOpen] = useState(false);
   const [editCardDialogOpen, setEditCardDialogOpen] = useState(false);
-  const [editCardData, setEditCardData] = useState({
-    callSign: '',
-    name: '',
-    credentials: [],
-    notes: ''
-  });
 
   const credentials = ['C4', 'F3', 'F2', 'F1', 'N3', 'N2', 'N1', 'P3', 'P2', 'P1', 'MAC', 'ERO'];
 
@@ -176,34 +285,94 @@ const TCardRack = ({ eventId, columns, onColumnsChange }) => {
     })
   );
 
+  useEffect(() => {
+    if (eventId) {
+      fetchCards();
+    }
+  }, [eventId]);
+
+  const fetchCards = async () => {
+    try {
+      const response = await tCardService.getCards(eventId);
+      setCards(response);
+    } catch (err) {
+      setError(err.message);
+      console.error('Error fetching cards:', err);
+    }
+  };
+
   const handleDragEnd = async (event) => {
     const { active, over } = event;
-    if (!over || active.id === over.id) return;
+    if (!over) return;
 
     try {
       setLoading(true);
 
-      // Find the indices of the dragged and target columns
-      const oldIndex = columns.findIndex(col => col.id === active.id);
-      const newIndex = columns.findIndex(col => col.id === over.id);
+      // Handle column reordering
+      if (active.id.toString().startsWith('column-') && over.id.toString().startsWith('column-')) {
+        const oldIndex = columns.findIndex(col => `column-${col.id}` === active.id);
+        const newIndex = columns.findIndex(col => `column-${col.id}` === over.id);
 
-      // Create a new array with the reordered columns
-      const reorderedColumns = arrayMove(columns, oldIndex, newIndex);
+        if (oldIndex !== newIndex) {
+          const reorderedColumns = arrayMove(columns, oldIndex, newIndex);
+          // Update positions in sequence
+          for (let i = 0; i < reorderedColumns.length; i++) {
+            await tCardService.updateColumn(
+              eventId,
+              reorderedColumns[i].id,
+              reorderedColumns[i].title,
+              i
+            );
+          }
+          onColumnsChange();
+        }
+      }
+      // Handle card reordering
+      else if (active.id.toString().startsWith('card-') && over.id.toString().startsWith('column-')) {
+        const cardId = parseInt(active.id.replace('card-', ''));
+        const columnId = parseInt(over.id.replace('column-', ''));
+        const card = cards.find(c => c.id === cardId);
 
-      // Update positions for all columns in the new order
-      await tCardService.reorderColumns(eventId, reorderedColumns);
+        if (card) {
+          const newPosition = cards.filter(c => c.column === columnId).length;
+          await tCardService.moveCard(cardId, columnId, newPosition);
+          fetchCards();
+        }
+      }
+      // Handle card reordering within the same column
+      else if (active.id.toString().startsWith('card-') && over.id.toString().startsWith('card-')) {
+        const activeCardId = parseInt(active.id.replace('card-', ''));
+        const overCardId = parseInt(over.id.replace('card-', ''));
+        const activeCard = cards.find(c => c.id === activeCardId);
+        const overCard = cards.find(c => c.id === overCardId);
 
-      // Refresh the data
-      onColumnsChange();
+        if (activeCard && overCard && activeCard.column === overCard.column) {
+          const columnCards = cards
+            .filter(c => c.column === activeCard.column)
+            .sort((a, b) => a.position - b.position);
+
+          const oldIndex = columnCards.findIndex(c => c.id === activeCardId);
+          const newIndex = columnCards.findIndex(c => c.id === overCardId);
+
+          if (oldIndex !== newIndex) {
+            const reorderedCards = arrayMove(columnCards, oldIndex, newIndex);
+            // Update positions in sequence
+            for (let i = 0; i < reorderedCards.length; i++) {
+              await tCardService.moveCard(reorderedCards[i].id, reorderedCards[i].column, i);
+            }
+            fetchCards();
+          }
+        }
+      }
     } catch (err) {
       setError(err.message);
-      console.error('Error reordering columns:', err);
+      console.error('Error handling drag end:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleEditColumn = async (column) => {
+  const handleEditColumn = (column) => {
     setEditingColumn(column);
     setEditColumnTitle(column.title);
     setEditColumnDialogOpen(true);
@@ -215,10 +384,10 @@ const TCardRack = ({ eventId, columns, onColumnsChange }) => {
     try {
       setLoading(true);
       await tCardService.updateColumn(
+        eventId,
         editingColumn.id,
         editColumnTitle.trim(),
-        editingColumn.position,
-        eventId
+        editingColumn.position
       );
       setEditColumnDialogOpen(false);
       onColumnsChange();
@@ -233,7 +402,7 @@ const TCardRack = ({ eventId, columns, onColumnsChange }) => {
   const handleDeleteColumn = async (columnId) => {
     try {
       setLoading(true);
-      await tCardService.deleteColumn(columnId);
+      await tCardService.deleteColumn(eventId, columnId);
       onColumnsChange();
     } catch (err) {
       setError(err.message);
@@ -244,57 +413,46 @@ const TCardRack = ({ eventId, columns, onColumnsChange }) => {
   };
 
   const handleAddCard = (columnId) => {
-    console.log('handleAddCard called with columnId:', columnId);
-    console.log('Current columns state:', columns);
-    setEditingCard({ columnId });
-    setEditCardData({
-      callSign: '',
-      name: '',
-      credentials: [],
-      notes: ''
+    setEditingCard({
+      column: columnId,
+      position: cards.filter(card => card.column === columnId).length
     });
     setEditCardDialogOpen(true);
   };
 
-  const handleSaveCard = () => {
-    console.log('handleSaveCard called');
-    console.log('Current editingCard:', editingCard);
-    console.log('Current editCardData:', editCardData);
+  const handleEditCard = (card) => {
+    setEditingCard(card);
+    setEditCardDialogOpen(true);
+  };
 
-    if (editCardData.callSign.trim()) {
-      const newCard = {
-        id: `card-${Date.now()}`,
-        callSign: editCardData.callSign.trim(),
-        name: editCardData.name.trim(),
-        credentials: editCardData.credentials,
-        notes: editCardData.notes.trim(),
-        checkInTime: new Date().toISOString(),
-        lastHeardFrom: new Date().toISOString()
-      };
+  const handleDeleteCard = async (cardId) => {
+    try {
+      await tCardService.deleteCard(cardId);
+      const updatedCards = await tCardService.getCards(eventId);
+      setCards(updatedCards);
+    } catch (error) {
+      console.error('Error deleting card:', error);
+    }
+  };
 
-      console.log('New card to be added:', newCard);
-
-      const updatedColumns = columns.map(column => {
-        if (column.id === editingCard.columnId) {
-          console.log('Found matching column:', column);
-          return {
-            ...column,
-            cards: [...(column.cards || []), newCard]
-          };
-        }
-        return column;
-      });
-
-      console.log('Updated columns:', updatedColumns);
-      onColumnsChange();
-      setEditCardDialogOpen(false);
+  const handleSaveCard = async (cardData) => {
+    try {
+      if (cardData.id) {
+        await tCardService.updateCard(cardData.id, cardData);
+      } else {
+        await tCardService.createCard({
+          ...cardData,
+          event: eventId,
+          column: editingCard.column,
+          position: editingCard.position
+        });
+      }
+      const updatedCards = await tCardService.getCards(eventId);
+      setCards(updatedCards);
       setEditingCard(null);
-      setEditCardData({
-        callSign: '',
-        name: '',
-        credentials: [],
-        notes: ''
-      });
+      setEditCardDialogOpen(false);
+    } catch (error) {
+      console.error('Error saving card:', error);
     }
   };
 
@@ -330,17 +488,19 @@ const TCardRack = ({ eventId, columns, onColumnsChange }) => {
         }}
       >
         <SortableContext
-          items={columns.map(column => column.id)}
+          items={columns.map(column => `column-${column.id}`)}
           strategy={horizontalListSortingStrategy}
         >
-          {columns.map((column, index) => (
+          {columns.map((column) => (
             <SortableColumn
               key={column.id}
               column={column}
-              index={index}
-              onEdit={handleEditColumn}
-              onDelete={handleDeleteColumn}
+              cards={cards}
+              onEditCard={handleEditCard}
+              onDeleteCard={handleDeleteCard}
               onAddCard={handleAddCard}
+              onEditColumn={handleEditColumn}
+              onDeleteColumn={handleDeleteColumn}
             />
           ))}
         </SortableContext>
@@ -368,66 +528,12 @@ const TCardRack = ({ eventId, columns, onColumnsChange }) => {
         </DialogActions>
       </Dialog>
 
-      {/* Edit Card Dialog */}
-      <Dialog
+      <TCardDialog
         open={editCardDialogOpen}
-        onClose={() => {
-          console.log('Closing card dialog');
-          setEditCardDialogOpen(false);
-        }}
-      >
-        <DialogTitle>Add Card</DialogTitle>
-        <DialogContent>
-          <TextField
-            autoFocus
-            margin="dense"
-            label="Call Sign"
-            fullWidth
-            value={editCardData.callSign}
-            onChange={(e) => {
-              console.log('Call sign changed:', e.target.value);
-              setEditCardData({ ...editCardData, callSign: e.target.value });
-            }}
-          />
-          <TextField
-            margin="dense"
-            label="Name"
-            fullWidth
-            value={editCardData.name}
-            onChange={(e) => {
-              console.log('Name changed:', e.target.value);
-              setEditCardData({ ...editCardData, name: e.target.value });
-            }}
-          />
-          <TextField
-            margin="dense"
-            label="Credentials"
-            fullWidth
-            value={editCardData.credentials.join(', ')}
-            onChange={(e) => {
-              console.log('Credentials changed:', e.target.value);
-              setEditCardData({ ...editCardData, credentials: e.target.value.split(',').map(c => c.trim()) });
-            }}
-          />
-          <TextField
-            margin="dense"
-            label="Notes"
-            fullWidth
-            value={editCardData.notes}
-            onChange={(e) => {
-              console.log('Notes changed:', e.target.value);
-              setEditCardData({ ...editCardData, notes: e.target.value });
-            }}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => {
-            console.log('Canceling card dialog');
-            setEditCardDialogOpen(false);
-          }}>Cancel</Button>
-          <Button onClick={handleSaveCard} variant="contained">Save</Button>
-        </DialogActions>
-      </Dialog>
+        onClose={() => setEditCardDialogOpen(false)}
+        onSubmit={handleSaveCard}
+        card={editingCard}
+      />
     </DndContext>
   );
 };
