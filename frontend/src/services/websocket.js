@@ -1,5 +1,6 @@
 import ReconnectingWebSocket from 'reconnecting-websocket';
 import { useStore } from '../store';
+import { WS_BASE_URL } from './apiService';
 
 class WebSocketService {
   constructor() {
@@ -14,7 +15,7 @@ class WebSocketService {
     }
 
     this.eventId = eventId;
-    const wsUrl = `ws://localhost:8000/ws/events/${eventId}/`;
+    const wsUrl = `${WS_BASE_URL}/ws/events/${eventId}/`;
     this.ws = new ReconnectingWebSocket(wsUrl);
 
     this.ws.onopen = () => {

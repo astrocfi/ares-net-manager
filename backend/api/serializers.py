@@ -22,7 +22,7 @@ class OperatorSerializer(serializers.ModelSerializer):
     class Meta:
         model = Operator
         fields = [
-            'id', 'call_sign', 'name', 'address', 'phone_primary', 'phone_secondary',
+            'id', 'call_sign', 'first_name', 'last_name', 'address', 'phone_primary', 'phone_secondary',
             'email_primary', 'email_secondary', 'notes', 'created_at', 'updated_at',
             'credentials'
         ]

@@ -1,9 +1,16 @@
 import axios from 'axios';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
+const getBaseUrl = () => {
+  const protocol = window.location.protocol;
+  const hostname = window.location.hostname;
+  return `${protocol}//${hostname}:8000`;
+};
+
+const API_BASE_URL = `${getBaseUrl()}/api`;
+const WS_BASE_URL = getBaseUrl().replace('http', 'ws');
 console.log('API Service initialized with URL:', API_BASE_URL);
 
-const apiService = axios.create({
+const axiosInstance = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
@@ -11,7 +18,7 @@ const apiService = axios.create({
 });
 
 // Add a request interceptor to include the auth token
-apiService.interceptors.request.use(
+axiosInstance.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -25,7 +32,7 @@ apiService.interceptors.request.use(
 );
 
 // Add a response interceptor to handle errors
-apiService.interceptors.response.use(
+axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
@@ -117,4 +124,9 @@ class ApiService {
   }
 }
 
-export { apiService };
+export const apiService = {
+  get: ApiService.prototype.get,
+  post: ApiService.prototype.post,
+  put: ApiService.prototype.put,
+  delete: ApiService.prototype.delete,
+};

@@ -22,25 +22,59 @@ import {
   FormControlLabel,
   Checkbox,
   Divider,
+  FormControl,
+  RadioGroup,
+  Radio,
+  Paper,
 } from '@mui/material';
 import { apiService } from '../services/apiService';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import { useNavigate } from 'react-router-dom';
+import OperatorForm from '../components/OperatorForm';
 
-const CREDENTIAL_OPTIONS = [
-  'C4',
-  'F3', 'F2', 'F1',
-  'N3', 'N2', 'N1',
-  'P3', 'P2', 'P1',
-  'S3', 'S2', 'S1',
-  'E3', 'E2',
-  'MAC',
-  'FIRE',
-  'ERO',
-  'UL',
-  'SHARES',
+const CREDENTIAL_GROUPS = [
+  {
+    name: 'C4',
+    options: ['C4'],
+    isRadio: true
+  },
+  {
+    name: 'F',
+    options: ['F3', 'F2', 'F1'],
+    isRadio: true
+  },
+  {
+    name: 'N',
+    options: ['N3', 'N2', 'N1'],
+    isRadio: true
+  },
+  {
+    name: 'P',
+    options: ['P3', 'P2', 'P1'],
+    isRadio: true
+  },
+  {
+    name: 'S',
+    options: ['S3', 'S2', 'S1'],
+    isRadio: true
+  },
+  {
+    name: 'E',
+    options: ['E3', 'E2'],
+    isRadio: true
+  },
+  {
+    name: 'MAC/FIRE/ERO',
+    options: ['MAC', 'FIRE', 'ERO'],
+    isRadio: false
+  },
+  {
+    name: 'UL/SHARES',
+    options: ['UL', 'SHARES'],
+    isRadio: false
+  }
 ];
 
 // Format phone number as user types
@@ -77,7 +111,8 @@ const OperatorList = () => {
   const [selectedOperator, setSelectedOperator] = useState(null);
   const [newOperator, setNewOperator] = useState({
     call_sign: '',
-    name: '',
+    first_name: '',
+    last_name: '',
     address: '',
     phone_primary: '',
     phone_secondary: '',
@@ -88,7 +123,8 @@ const OperatorList = () => {
   });
   const [editOperator, setEditOperator] = useState({
     call_sign: '',
-    name: '',
+    first_name: '',
+    last_name: '',
     address: '',
     phone_primary: '',
     phone_secondary: '',
@@ -118,34 +154,6 @@ const OperatorList = () => {
     }
   };
 
-  const validateForm = (operator, isEdit = false) => {
-    const errors = {};
-    if (!operator.call_sign.trim()) {
-      errors.call_sign = 'Call sign is required';
-    }
-    if (!operator.name.trim()) {
-      errors.name = 'Name is required';
-    }
-    if (operator.phone_primary && !isValidPhoneNumber(operator.phone_primary)) {
-      errors.phone_primary = 'Phone number must have 10 digits';
-    }
-    if (operator.phone_secondary && !isValidPhoneNumber(operator.phone_secondary)) {
-      errors.phone_secondary = 'Phone number must have 10 digits';
-    }
-    if (operator.email_primary && !isValidEmail(operator.email_primary)) {
-      errors.email_primary = 'Invalid email address';
-    }
-    if (operator.email_secondary && !isValidEmail(operator.email_secondary)) {
-      errors.email_secondary = 'Invalid email address';
-    }
-    if (isEdit) {
-      setEditFormErrors(errors);
-    } else {
-      setFormErrors(errors);
-    }
-    return Object.keys(errors).length === 0;
-  };
-
   const handleOpen = () => {
     setOpen(true);
     setFormErrors({});
@@ -155,7 +163,8 @@ const OperatorList = () => {
     setOpen(false);
     setNewOperator({
       call_sign: '',
-      name: '',
+      first_name: '',
+      last_name: '',
       address: '',
       phone_primary: '',
       phone_secondary: '',
@@ -171,7 +180,8 @@ const OperatorList = () => {
     setSelectedOperator(operator);
     setEditOperator({
       call_sign: operator.call_sign,
-      name: operator.name,
+      first_name: operator.first_name || '',
+      last_name: operator.last_name || '',
       address: operator.address || '',
       phone_primary: operator.phone_primary || '',
       phone_secondary: operator.phone_secondary || '',
@@ -193,37 +203,77 @@ const OperatorList = () => {
   const handleChange = (field) => (event) => {
     let value = event.target.value;
     if (field === 'call_sign') {
-      value = value.toUpperCase();
+      value = value.toUpperCase().replace(/[^A-Z0-9/]/g, '');
     } else if (field === 'phone_primary' || field === 'phone_secondary') {
       value = formatPhoneNumber(value);
     }
     setNewOperator({ ...newOperator, [field]: value });
-    validateForm({ ...newOperator, [field]: value });
   };
 
   const handleEditChange = (field) => (event) => {
     let value = event.target.value;
     if (field === 'call_sign') {
-      value = value.toUpperCase();
+      value = value.toUpperCase().replace(/[^A-Z0-9/]/g, '');
     } else if (field === 'phone_primary' || field === 'phone_secondary') {
       value = formatPhoneNumber(value);
     }
     setEditOperator({ ...editOperator, [field]: value });
-    validateForm({ ...editOperator, [field]: value }, true);
   };
 
-  const handleCredentialChange = (credential) => (event) => {
-    const newCredentials = event.target.checked
-      ? [...newOperator.credentials, credential]
-      : newOperator.credentials.filter(c => c !== credential);
-    setNewOperator({ ...newOperator, credentials: newCredentials });
+  const handleCredentialChange = (credential, isRadio) => (event) => {
+    if (isRadio) {
+      const group = CREDENTIAL_GROUPS.find(g => g.options.includes(credential));
+      if (!group) return;
+
+      let newCredentials = newOperator.credentials.filter(c => !group.options.includes(c));
+      if (event.target.checked) {
+        newCredentials.push(credential);
+      }
+
+      // If C4 is being checked, remove any F/N/P/S credentials
+      if (credential === 'C4' && event.target.checked) {
+        newCredentials = newCredentials.filter(c => !['F3', 'F2', 'F1', 'N3', 'N2', 'N1', 'P3', 'P2', 'P1', 'S3', 'S2', 'S1'].includes(c));
+      }
+      // If any F/N/P/S is being checked, remove C4
+      else if (['F3', 'F2', 'F1', 'N3', 'N2', 'N1', 'P3', 'P2', 'P1', 'S3', 'S2', 'S1'].includes(credential) && event.target.checked) {
+        newCredentials = newCredentials.filter(c => c !== 'C4');
+      }
+
+      setNewOperator({ ...newOperator, credentials: newCredentials });
+    } else {
+      const newCredentials = event.target.checked
+        ? [...newOperator.credentials, credential]
+        : newOperator.credentials.filter(c => c !== credential);
+      setNewOperator({ ...newOperator, credentials: newCredentials });
+    }
   };
 
-  const handleEditCredentialChange = (credential) => (event) => {
-    const newCredentials = event.target.checked
-      ? [...editOperator.credentials, credential]
-      : editOperator.credentials.filter(c => c !== credential);
-    setEditOperator({ ...editOperator, credentials: newCredentials });
+  const handleEditCredentialChange = (credential, isRadio) => (event) => {
+    if (isRadio) {
+      const group = CREDENTIAL_GROUPS.find(g => g.options.includes(credential));
+      if (!group) return;
+
+      let newCredentials = editOperator.credentials.filter(c => !group.options.includes(c));
+      if (event.target.checked) {
+        newCredentials.push(credential);
+      }
+
+      // If C4 is being checked, remove any F/N/P/S credentials
+      if (credential === 'C4' && event.target.checked) {
+        newCredentials = newCredentials.filter(c => !['F3', 'F2', 'F1', 'N3', 'N2', 'N1', 'P3', 'P2', 'P1', 'S3', 'S2', 'S1'].includes(c));
+      }
+      // If any F/N/P/S is being checked, remove C4
+      else if (['F3', 'F2', 'F1', 'N3', 'N2', 'N1', 'P3', 'P2', 'P1', 'S3', 'S2', 'S1'].includes(credential) && event.target.checked) {
+        newCredentials = newCredentials.filter(c => c !== 'C4');
+      }
+
+      setEditOperator({ ...editOperator, credentials: newCredentials });
+    } else {
+      const newCredentials = event.target.checked
+        ? [...editOperator.credentials, credential]
+        : editOperator.credentials.filter(c => c !== credential);
+      setEditOperator({ ...editOperator, credentials: newCredentials });
+    }
   };
 
   const showError = (message) => {
@@ -242,9 +292,6 @@ const OperatorList = () => {
     if (e) {
       e.preventDefault();
     }
-    if (!validateForm(newOperator)) {
-      return;
-    }
 
     try {
       await apiService.post('/operators/', newOperator);
@@ -261,9 +308,6 @@ const OperatorList = () => {
       e.preventDefault();
     }
     if (!selectedOperator) return;
-    if (!validateForm(editOperator, true)) {
-      return;
-    }
 
     try {
       await apiService.put(`/operators/${selectedOperator.id}/`, editOperator);
@@ -276,7 +320,7 @@ const OperatorList = () => {
   };
 
   const isFormValid = () => {
-    return newOperator.call_sign.trim() && newOperator.name.trim() &&
+    return newOperator.call_sign.trim() &&
            (!newOperator.phone_primary || isValidPhoneNumber(newOperator.phone_primary)) &&
            (!newOperator.phone_secondary || isValidPhoneNumber(newOperator.phone_secondary)) &&
            (!newOperator.email_primary || isValidEmail(newOperator.email_primary)) &&
@@ -284,7 +328,7 @@ const OperatorList = () => {
   };
 
   const isEditFormValid = () => {
-    return editOperator.call_sign.trim() && editOperator.name.trim() &&
+    return editOperator.call_sign.trim() &&
            (!editOperator.phone_primary || isValidPhoneNumber(editOperator.phone_primary)) &&
            (!editOperator.phone_secondary || isValidPhoneNumber(editOperator.phone_secondary)) &&
            (!editOperator.email_primary || isValidEmail(editOperator.email_primary)) &&
@@ -323,49 +367,16 @@ const OperatorList = () => {
               sx={{
                 backgroundColor: index % 2 === 0 ? 'background.paper' : 'grey.100',
                 '&:hover': {
-                  backgroundColor: 'grey.200'
+                  backgroundColor: 'grey.200',
+                  cursor: 'pointer'
                 }
               }}
+              onClick={() => navigate(`/operators/${operator.id}`)}
             >
               <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
                 <Grid container spacing={0.5} alignItems="center">
-                  <Grid item xs={1}>
-                    <Box sx={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      height: '100%'
-                    }}>
-                      <Tooltip title="View details">
-                        <Button
-                          variant="outlined"
-                          color="primary"
-                          onClick={() => navigate(`/operators/${operator.id}`)}
-                          sx={{
-                            mr: 0.5,
-                            minWidth: '60px',
-                            height: '24px',
-                            fontSize: '0.75rem',
-                            padding: '0 8px',
-                            lineHeight: '1.2',
-                            my: 'auto'
-                          }}
-                        >
-                          DETAILS
-                        </Button>
-                      </Tooltip>
-                      <Tooltip title="Edit operator">
-                        <IconButton
-                          color="primary"
-                          onClick={() => handleEditOpen(operator)}
-                          sx={{ mr: 0.5, padding: '4px' }}
-                        >
-                          <EditIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                    </Box>
-                  </Grid>
-                  <Grid item xs={1}>
-                    <Typography variant="subtitle1" fontWeight="bold" sx={{ minWidth: '60px' }}>
+                  <Grid item xs={2}>
+                    <Typography variant="subtitle1" fontWeight="bold" sx={{ minWidth: '100px' }}>
                       {operator.call_sign}
                     </Typography>
                   </Grid>
@@ -377,10 +388,10 @@ const OperatorList = () => {
                       maxWidth: '200px',
                       lineHeight: 1.2
                     }}>
-                      {operator.name}
+                      {`${operator.first_name || ''} ${operator.last_name || ''}`.trim() || 'No name'}
                     </Typography>
                   </Grid>
-                  <Grid item xs={3}>
+                  <Grid item xs={4}>
                     <Typography variant="body2" sx={{
                       whiteSpace: 'nowrap',
                       overflow: 'hidden',
@@ -405,15 +416,6 @@ const OperatorList = () => {
                       {operator.email_primary}
                     </Typography>
                   </Grid>
-                  <Grid item xs={1}>
-                    <Box sx={{
-                      display: 'flex',
-                      justifyContent: 'flex-end',
-                      alignItems: 'center',
-                      height: '100%'
-                    }}>
-                    </Box>
-                  </Grid>
                 </Grid>
               </Box>
             </ListItem>
@@ -422,294 +424,30 @@ const OperatorList = () => {
       </Box>
 
       {/* Create Operator Dialog */}
-      <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
-        <DialogTitle>Add New Operator</DialogTitle>
-        <form onSubmit={handleSubmit}>
-          <DialogContent>
-            <Grid container spacing={0.25}>
-              <Grid item xs={12} sm={6}>
-                <Box sx={{ height: '80px' }}>
-                  <TextField
-                    autoFocus
-                    margin="dense"
-                    label="Call Sign"
-                    fullWidth
-                    value={newOperator.call_sign}
-                    onChange={handleChange('call_sign')}
-                    required
-                    error={!!formErrors.call_sign}
-                    helperText={formErrors.call_sign}
-                  />
-                </Box>
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <Box sx={{ height: '80px' }}>
-                  <TextField
-                    margin="dense"
-                    label="Name"
-                    fullWidth
-                    value={newOperator.name}
-                    onChange={handleChange('name')}
-                    required
-                    error={!!formErrors.name}
-                    helperText={formErrors.name}
-                  />
-                </Box>
-              </Grid>
-              <Grid item xs={12}>
-                <Box sx={{ height: '80px', mb: 3 }}>
-                  <TextField
-                    margin="dense"
-                    label="Address"
-                    fullWidth
-                    multiline
-                    rows={2}
-                    value={newOperator.address}
-                    onChange={handleChange('address')}
-                  />
-                </Box>
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <Box sx={{ height: '80px' }}>
-                  <TextField
-                    margin="dense"
-                    label="Primary Phone"
-                    fullWidth
-                    value={newOperator.phone_primary}
-                    onChange={handleChange('phone_primary')}
-                    placeholder="(555) 555-5555"
-                    error={!!formErrors.phone_primary}
-                    helperText={formErrors.phone_primary}
-                  />
-                </Box>
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <Box sx={{ height: '80px' }}>
-                  <TextField
-                    margin="dense"
-                    label="Secondary Phone"
-                    fullWidth
-                    value={newOperator.phone_secondary}
-                    onChange={handleChange('phone_secondary')}
-                    placeholder="(555) 555-5555"
-                    error={!!formErrors.phone_secondary}
-                    helperText={formErrors.phone_secondary}
-                  />
-                </Box>
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <Box sx={{ height: '80px' }}>
-                  <TextField
-                    margin="dense"
-                    label="Primary Email"
-                    fullWidth
-                    type="email"
-                    value={newOperator.email_primary}
-                    onChange={handleChange('email_primary')}
-                    error={!!formErrors.email_primary}
-                    helperText={formErrors.email_primary}
-                  />
-                </Box>
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <Box sx={{ height: '80px' }}>
-                  <TextField
-                    margin="dense"
-                    label="Secondary Email"
-                    fullWidth
-                    type="email"
-                    value={newOperator.email_secondary}
-                    onChange={handleChange('email_secondary')}
-                    error={!!formErrors.email_secondary}
-                    helperText={formErrors.email_secondary}
-                  />
-                </Box>
-              </Grid>
-              <Grid item xs={12}>
-                <Typography variant="subtitle1" gutterBottom>
-                  Credentials
-                </Typography>
-                <FormGroup row>
-                  {CREDENTIAL_OPTIONS.map((credential) => (
-                    <FormControlLabel
-                      key={credential}
-                      control={
-                        <Checkbox
-                          checked={newOperator.credentials.includes(credential)}
-                          onChange={handleCredentialChange(credential)}
-                        />
-                      }
-                      label={credential}
-                    />
-                  ))}
-                </FormGroup>
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  margin="dense"
-                  label="Notes"
-                  fullWidth
-                  multiline
-                  rows={4}
-                  value={newOperator.notes}
-                  onChange={handleChange('notes')}
-                />
-              </Grid>
-            </Grid>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={handleClose}>Cancel</Button>
-            <Button type="submit" color="primary" disabled={!isFormValid()}>
-              Add
-            </Button>
-          </DialogActions>
-        </form>
-      </Dialog>
+      <OperatorForm
+        open={open}
+        onClose={handleClose}
+        onSubmit={handleSubmit}
+        title="Add New Operator"
+        operator={newOperator}
+        setOperator={setNewOperator}
+        formErrors={formErrors}
+        setFormErrors={setFormErrors}
+        isFormValid={isFormValid}
+      />
 
       {/* Edit Operator Dialog */}
-      <Dialog open={editDialogOpen} onClose={handleEditClose} maxWidth="md" fullWidth>
-        <DialogTitle>Edit Operator</DialogTitle>
-        <form onSubmit={handleEditSubmit}>
-          <DialogContent>
-            <Grid container spacing={0.25}>
-              <Grid item xs={12} sm={6}>
-                <Box sx={{ height: '80px' }}>
-                  <TextField
-                    autoFocus
-                    margin="dense"
-                    label="Call Sign"
-                    fullWidth
-                    value={editOperator.call_sign}
-                    onChange={handleEditChange('call_sign')}
-                    required
-                    error={!!editFormErrors.call_sign}
-                    helperText={editFormErrors.call_sign}
-                  />
-                </Box>
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <Box sx={{ height: '80px' }}>
-                  <TextField
-                    margin="dense"
-                    label="Name"
-                    fullWidth
-                    value={editOperator.name}
-                    onChange={handleEditChange('name')}
-                    required
-                    error={!!editFormErrors.name}
-                    helperText={editFormErrors.name}
-                  />
-                </Box>
-              </Grid>
-              <Grid item xs={12}>
-                <Box sx={{ height: '80px', mb: 3 }}>
-                  <TextField
-                    margin="dense"
-                    label="Address"
-                    fullWidth
-                    multiline
-                    rows={2}
-                    value={editOperator.address}
-                    onChange={handleEditChange('address')}
-                  />
-                </Box>
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <Box sx={{ height: '80px' }}>
-                  <TextField
-                    margin="dense"
-                    label="Primary Phone"
-                    fullWidth
-                    value={editOperator.phone_primary}
-                    onChange={handleEditChange('phone_primary')}
-                    placeholder="(555) 555-5555"
-                    error={!!editFormErrors.phone_primary}
-                    helperText={editFormErrors.phone_primary}
-                  />
-                </Box>
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <Box sx={{ height: '80px' }}>
-                  <TextField
-                    margin="dense"
-                    label="Secondary Phone"
-                    fullWidth
-                    value={editOperator.phone_secondary}
-                    onChange={handleEditChange('phone_secondary')}
-                    placeholder="(555) 555-5555"
-                    error={!!editFormErrors.phone_secondary}
-                    helperText={editFormErrors.phone_secondary}
-                  />
-                </Box>
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <Box sx={{ height: '80px' }}>
-                  <TextField
-                    margin="dense"
-                    label="Primary Email"
-                    fullWidth
-                    type="email"
-                    value={editOperator.email_primary}
-                    onChange={handleEditChange('email_primary')}
-                    error={!!editFormErrors.email_primary}
-                    helperText={editFormErrors.email_primary}
-                  />
-                </Box>
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <Box sx={{ height: '80px' }}>
-                  <TextField
-                    margin="dense"
-                    label="Secondary Email"
-                    fullWidth
-                    type="email"
-                    value={editOperator.email_secondary}
-                    onChange={handleEditChange('email_secondary')}
-                    error={!!editFormErrors.email_secondary}
-                    helperText={editFormErrors.email_secondary}
-                  />
-                </Box>
-              </Grid>
-              <Grid item xs={12}>
-                <Typography variant="subtitle1" gutterBottom>
-                  Credentials
-                </Typography>
-                <FormGroup row>
-                  {CREDENTIAL_OPTIONS.map((credential) => (
-                    <FormControlLabel
-                      key={credential}
-                      control={
-                        <Checkbox
-                          checked={editOperator.credentials.includes(credential)}
-                          onChange={handleEditCredentialChange(credential)}
-                        />
-                      }
-                      label={credential}
-                    />
-                  ))}
-                </FormGroup>
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  margin="dense"
-                  label="Notes"
-                  fullWidth
-                  multiline
-                  rows={4}
-                  value={editOperator.notes}
-                  onChange={handleEditChange('notes')}
-                />
-              </Grid>
-            </Grid>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={handleEditClose}>Cancel</Button>
-            <Button type="submit" color="primary" disabled={!isEditFormValid()}>
-              Save
-            </Button>
-          </DialogActions>
-        </form>
-      </Dialog>
+      <OperatorForm
+        open={editDialogOpen}
+        onClose={handleEditClose}
+        onSubmit={handleEditSubmit}
+        title="Edit Operator"
+        operator={editOperator}
+        setOperator={setEditOperator}
+        formErrors={editFormErrors}
+        setFormErrors={setEditFormErrors}
+        isFormValid={isEditFormValid}
+      />
     </Container>
   );
 };
